@@ -1,11 +1,11 @@
-import type { GameState } from '@engine/types';
+import type { ServerStateView } from '../types/multiplayer';
 
 type Props = {
-  state: GameState;
+  state: ServerStateView;
 };
 
 export function Scoreboard({ state }: Props) {
-  const players = Array.from(state.players.values()).sort((a, b) => a.playerNumber - b.playerNumber);
+  const players = [...state.players].sort((a, b) => a.playerNumber - b.playerNumber);
 
   return (
     <div className="rounded-2xl border border-black/10 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
@@ -15,13 +15,14 @@ export function Scoreboard({ state }: Props) {
           const isCurrent = player.playerNumber === state.currentPlayerNumber;
           return (
             <div
-              key={player.id}
+              key={player.playerNumber}
               className={`flex items-center justify-between rounded-xl px-3 py-2 transition ${
                 isCurrent ? 'bg-accent/10 ring-1 ring-accent/30' : 'bg-black/[0.03]'
               }`}
             >
               <span className="text-sm font-medium">
                 P{player.playerNumber} · {player.name}
+                {!player.connected ? ' (offline)' : ''}
               </span>
               <span className="text-sm font-bold">{player.score}</span>
             </div>
