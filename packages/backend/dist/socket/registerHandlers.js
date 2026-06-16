@@ -9,7 +9,9 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             emitServerError(socket, 'RATE_LIMIT', 'Too many events. Slow down.');
             return;
         }
-        Promise.resolve(fn()).catch((error) => {
+        Promise.resolve()
+            .then(fn)
+            .catch((error) => {
             const message = error instanceof Error ? error.message : 'Unexpected server error';
             emitServerError(socket, 'BAD_REQUEST', message);
         });

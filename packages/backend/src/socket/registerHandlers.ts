@@ -39,10 +39,12 @@ export function registerHandlers(
       return;
     }
 
-    Promise.resolve(fn()).catch((error) => {
+    Promise.resolve()
+      .then(fn)
+      .catch((error) => {
       const message = error instanceof Error ? error.message : 'Unexpected server error';
       emitServerError(socket, 'BAD_REQUEST', message);
-    });
+      });
   };
 
   socket.on('createLobby', (payload, ack) =>

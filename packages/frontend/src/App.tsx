@@ -135,6 +135,12 @@ export default function App() {
     });
 
     socket.on('serverError', ({ message }) => {
+      if (message === 'Lobby not found') {
+        setLobby(null);
+        setGameState(null);
+        setJoinedLobbyId(null);
+        localStorage.removeItem(STORAGE.lobbyId);
+      }
       setError(message);
     });
 
