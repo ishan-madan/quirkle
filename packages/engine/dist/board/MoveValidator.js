@@ -123,15 +123,17 @@ export class MoveValidator {
         }
         // Steps 11-15: Build affected lines and validate them
         const placementMap = new Map();
+        const workingBoard = board.clone();
         for (const placement of placements) {
             const tile = playerRack.find((t) => t.id === placement.tileId);
             if (tile) {
                 placementMap.set(placement.coordinate, tile);
+                workingBoard.placeTile(placement.coordinate, tile);
             }
         }
         // Get all affected lines (primary + perpendicular)
         const primaryAxis = axis;
-        const affectedLines = this.getAffectedLines(board, placementMap, primaryAxis);
+        const affectedLines = this.getAffectedLines(workingBoard, placementMap, primaryAxis);
         // Validate primary line
         if (affectedLines.primary.length > 0) {
             const tiles = affectedLines.primary.map((coord) => {
@@ -195,43 +197,18 @@ export class MoveValidator {
      * Get all lines affected by a placement.
      */
     static getAffectedLines(board, placements, primaryAxis) {
-        const primaryLines = new Set();
+        const firstPlacement = placements.keys().next();
+        const primary = firstPlacement.done
+            ? []
+            : board.getMaximalLine(firstPlacement.value, primaryAxis);
         const perpLines = new Map();
         for (const [coord, tile] of placements) {
-            // Primary line through this coordinate
-            const primary = board.getMaximalLine(coord, primaryAxis);
-            if (primary.length === 0) {
-                // Coordinate not yet on board; construct line including this placement
-                const workingBoard = board.clone();
-                workingBoard.placeTile(coord, tile);
-                const line = workingBoard.getMaximalLine(coord, primaryAxis);
-                if (line.length > 0) {
-                    primaryLines.add(line.join('|'));
-                }
-            }
-            else {
-                primaryLines.add(primary.join('|'));
-            }
             // Perpendicular line through this coordinate
             const perpAxis = primaryAxis === 'horizontal' ? 'vertical' : 'horizontal';
             const perp = board.getMaximalLine(coord, perpAxis);
-            if (perp.length === 0 || perp.length === 1) {
-                // Try to construct with this placement
-                const workingBoard = board.clone();
-                workingBoard.placeTile(coord, tile);
-                const line = workingBoard.getMaximalLine(coord, perpAxis);
-                if (line.length > 1) {
-                    perpLines.set(line.join('|'), line);
-                }
-            }
-            else if (perp.length > 1) {
+            if (perp.length > 1) {
                 perpLines.set(perp.join('|'), perp);
             }
-        }
-        // Convert sets to arrays of coordinates
-        const primary = [];
-        for (const key of primaryLines) {
-            primary.push(...key.split('|'));
         }
         const perpendicular = Array.from(perpLines.values());
         return { primary, perpendicular };
