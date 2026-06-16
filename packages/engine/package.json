@@ -1,0 +1,39 @@
+{
+  "name": "@qwirkle/engine",
+  "version": "1.0.0",
+  "description": "Pure TypeScript Qwirkle game engine - deterministic, UI-agnostic, fully testable",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "dev": "tsc --watch"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "keywords": [
+    "qwirkle",
+    "board-game",
+    "game-engine",
+    "typescript",
+    "deterministic",
+    "multiplayer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
