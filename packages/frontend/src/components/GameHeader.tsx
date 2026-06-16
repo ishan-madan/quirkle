@@ -1,11 +1,11 @@
-import type { GameState } from '@engine/types';
+import type { ServerStateView } from '../types/multiplayer';
 
 type Props = {
-  state: GameState;
+  state: ServerStateView;
 };
 
 export function GameHeader({ state }: Props) {
-  const current = state.players.get(state.currentPlayerNumber);
+  const current = state.players.find((player) => player.playerNumber === state.currentPlayerNumber);
 
   return (
     <header className="rounded-2xl border border-black/10 bg-white/80 p-4 shadow-sm backdrop-blur-sm">

@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/boardviewport.tsx","./src/components/gameheader.tsx","./src/components/scoreboard.tsx","./src/components/tilerack.tsx","./src/lib/coords.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/boardviewport.tsx","./src/components/gameheader.tsx","./src/components/scoreboard.tsx","./src/components/tilerack.tsx","./src/lib/coords.ts","./src/network/socket.ts","./src/types/multiplayer.ts"],"version":"5.9.3"}

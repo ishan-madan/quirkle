@@ -1,7 +1,10 @@
-import type { TileInstance } from '@engine/types';
+type RackTile = {
+  id: number;
+  type: { color: string; shape: string };
+};
 
 type Props = {
-  tiles: TileInstance[];
+  tiles: RackTile[];
   selectedForExchange: Set<number>;
   onToggleExchange: (tileId: number) => void;
 };
