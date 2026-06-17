@@ -43,6 +43,14 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
   }
 );
 
+app.get("/", (_req, res) => {
+  res.json({
+    status: "ok",
+    service: "qwirkle-backend",
+    time: new Date().toISOString(),
+  });
+});
+
 const lobbyManager = new LobbyManager();
 const sessionManager = new GameSessionManager();
 const socketsByUser = new Map<string, string>();
