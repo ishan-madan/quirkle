@@ -391,12 +391,7 @@ export class GameEngine {
 
     // Award rack-empty bonus
     const currentPlayer = this.getCurrentPlayer();
-    let rackBonusTotal = 0;
-    for (const [, player] of this.players) {
-      if (player.playerNumber !== currentPlayer.playerNumber) {
-        rackBonusTotal += player.rack.length;
-      }
-    }
+    let rackBonusTotal = 6;
     currentPlayer.score += rackBonusTotal;
 
     // Determine winner
