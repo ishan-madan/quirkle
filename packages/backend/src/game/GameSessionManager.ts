@@ -17,7 +17,8 @@ export class GameSessionManager {
       playerCount,
       playerNames,
     });
-    engine.startGame(1);
+    const firstPlayerNumber = Math.floor(Math.random() * playerCount) + 1;
+    engine.startGame(firstPlayerNumber);
 
     const playerNumberByUserId = new Map<UserId, number>();
     lobby.players.forEach((player, index) => {
