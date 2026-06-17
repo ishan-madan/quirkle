@@ -9,8 +9,8 @@ type ServerToClientEvents = {
 };
 
 type ClientToServerEvents = {
-  createLobby: (payload: { name?: string }, ack?: (response: { lobbyId: string }) => void) => void;
-  joinLobby: (payload: { lobbyId: string }, ack?: (response: { ok: true }) => void) => void;
+  createLobby: (payload: { name?: string }, ack?: (response: { lobbyId: string; rejoinToken: string }) => void) => void;
+  joinLobby: (payload: { lobbyId: string; rejoinToken?: string }, ack?: (response: { ok: true; rejoinToken: string }) => void) => void;
   leaveLobby: (payload: { lobbyId: string }, ack?: (response: { ok: true }) => void) => void;
   startGame: (payload: { lobbyId: string }, ack?: (response: { ok: true }) => void) => void;
   submitMove: (

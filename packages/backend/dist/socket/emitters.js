@@ -84,7 +84,22 @@ function computeValidTargets(raw, userPlayerNumber) {
     return valid;
 }
 export function emitLobby(io, lobby) {
-    io.to(lobby.id).emit('lobbyUpdated', lobby);
+    io.to(lobby.id).emit('lobbyUpdated', toClientLobby(lobby));
+}
+function toClientLobby(lobby) {
+    return {
+        id: lobby.id,
+        hostUserId: lobby.hostUserId,
+        createdAt: lobby.createdAt,
+        gameStarted: lobby.gameStarted,
+        players: lobby.players.map((player) => ({
+            userId: player.userId,
+            socketId: player.socketId,
+            name: player.name,
+            joinedAt: player.joinedAt,
+            connected: player.connected,
+        })),
+    };
 }
 export function emitStateToLobby(io, socketsByUser, lobbyId, state, playerNumberByUserId, message) {
     for (const [userId, userPlayerNumber] of playerNumberByUserId) {

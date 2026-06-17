@@ -1,7 +1,8 @@
 import { checkRateLimit } from './middleware/rateLimit.js';
 import { emitLobby, emitServerError, emitStateToLobby, toClientState } from './emitters.js';
 import { config } from '../config.js';
-import { createLobbySchema, drawTilesSchema, lobbyIdSchema, submitMoveSchema, } from './validators.js';
+import { makeRejoinToken } from '../utils/id.js';
+import { createLobbySchema, drawTilesSchema, joinLobbySchema, lobbyIdSchema, submitMoveSchema, } from './validators.js';
 export function registerHandlers(io, socket, lobbyManager, sessionManager, socketsByUser, persistence) {
     socketsByUser.set(socket.data.user.userId, socket.id);
     const guard = (fn) => {
@@ -9,62 +10,82 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             emitServerError(socket, 'RATE_LIMIT', 'Too many events. Slow down.');
             return;
         }
-        Promise.resolve(fn()).catch((error) => {
+        Promise.resolve()
+            .then(fn)
+            .catch((error) => {
             const message = error instanceof Error ? error.message : 'Unexpected server error';
             emitServerError(socket, 'BAD_REQUEST', message);
         });
     };
     socket.on('createLobby', (payload, ack) => guard(async () => {
         const parsed = createLobbySchema.parse(payload ?? {});
+        const rejoinToken = makeRejoinToken();
         const lobby = lobbyManager.createLobby({
             userId: socket.data.user.userId,
             socketId: socket.id,
             name: parsed.name?.trim() || socket.data.user.name,
             joinedAt: Date.now(),
             connected: true,
+            rejoinToken,
         });
         socket.join(lobby.id);
         emitLobby(io, lobby);
-        ack?.({ lobbyId: lobby.id });
+        ack?.({ lobbyId: lobby.id, rejoinToken });
     }));
     socket.on('joinLobby', (payload, ack) => guard(() => {
-        const parsed = lobbyIdSchema.parse(payload);
-        const lobby = lobbyManager.joinLobby(parsed.lobbyId, {
+        const parsed = joinLobbySchema.parse(payload);
+        const lobbyId = parsed.lobbyId.toUpperCase();
+        const { lobby, reclaimedUserId, rejoinToken } = lobbyManager.joinLobby(lobbyId, {
             userId: socket.data.user.userId,
             socketId: socket.id,
             name: socket.data.user.name,
             joinedAt: Date.now(),
             connected: true,
-        });
+        }, parsed.rejoinToken);
+        if (reclaimedUserId) {
+            socketsByUser.delete(reclaimedUserId);
+            sessionManager.reassignPlayerUserId(lobbyId, reclaimedUserId, socket.data.user.userId);
+        }
         socket.join(lobby.id);
         emitLobby(io, lobby);
-        const session = sessionManager.getSession(parsed.lobbyId);
+        const session = sessionManager.getSession(lobbyId);
         if (session) {
             const rawState = session.engine.getGameState();
             const playerNumber = session.playerNumberByUserId.get(socket.data.user.userId);
             socket.emit('gameUpdate', {
-                lobbyId: parsed.lobbyId,
+                lobbyId,
                 state: toClientState(rawState, playerNumber),
                 message: 'Reconnected to game',
             });
         }
-        ack?.({ ok: true });
+        ack?.({ ok: true, rejoinToken });
     }));
     socket.on('leaveLobby', (payload, ack) => guard(() => {
         const parsed = lobbyIdSchema.parse(payload);
-        socket.leave(parsed.lobbyId);
-        const result = lobbyManager.leaveLobby(parsed.lobbyId, socket.data.user.userId);
+        const lobbyId = parsed.lobbyId.toUpperCase();
+        socket.leave(lobbyId);
+        const activeSession = sessionManager.getSession(lobbyId);
+        if (activeSession) {
+            const lobby = lobbyManager.disconnectPlayer(lobbyId, socket.data.user.userId);
+            if (lobby) {
+                emitLobby(io, lobby);
+            }
+            ack?.({ ok: true });
+            return;
+        }
+        const result = lobbyManager.leaveLobby(lobbyId, socket.data.user.userId);
         if (result.lobby) {
             emitLobby(io, result.lobby);
         }
         else if (result.deleted) {
-            sessionManager.deleteSession(parsed.lobbyId);
+            sessionManager.deleteSession(lobbyId);
         }
         ack?.({ ok: true });
     }));
     socket.on('startGame', (payload, ack) => guard(async () => {
         const parsed = lobbyIdSchema.parse(payload);
-        const lobby = lobbyManager.getLobby(parsed.lobbyId);
+        const lobbyId = parsed.lobbyId.toUpperCase();
+        const lobby = lobbyManager.getLobby(lobbyId);
         if (!lobby)
             throw new Error('Lobby not found');
         if (lobby.hostUserId !== socket.data.user.userId)
@@ -73,7 +94,7 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
         if (persistence) {
             await persistence.onGameStarted(session, lobby);
         }
-        lobbyManager.setGameStarted(parsed.lobbyId, true);
+        lobbyManager.setGameStarted(lobbyId, true);
         emitLobby(io, { ...lobby, gameStarted: true });
         const rawState = session.engine.getGameState();
         emitStateToLobby(io, socketsByUser, lobby.id, rawState, session.playerNumberByUserId, 'Game started');
@@ -81,7 +102,8 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
     }));
     socket.on('submitMove', (payload, ack) => guard(async () => {
         const parsed = submitMoveSchema.parse(payload);
-        const session = sessionManager.getSession(parsed.lobbyId);
+        const lobbyId = parsed.lobbyId.toUpperCase();
+        const session = sessionManager.getSession(lobbyId);
         if (!session)
             throw new Error('Game session not found');
         const playerNumber = session.playerNumberByUserId.get(socket.data.user.userId);
@@ -121,19 +143,20 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             await persistence.appendSessionEvents(session);
         }
         const stateAfter = session.engine.getGameState();
-        emitStateToLobby(io, socketsByUser, parsed.lobbyId, stateAfter, session.playerNumberByUserId, parsed.kind === 'pass' ? 'Turn passed' : `Move accepted (+${result.score ?? 0})`);
+        emitStateToLobby(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId, parsed.kind === 'pass' ? 'Turn passed' : `Move accepted (+${result.score ?? 0})`);
         if (stateAfter.isGameOver) {
-            const activeLobby = lobbyManager.getLobby(parsed.lobbyId);
+            const activeLobby = lobbyManager.getLobby(lobbyId);
             if (persistence && activeLobby) {
                 await persistence.completeGame(session, activeLobby, stateAfter);
             }
-            emitGameOver(io, socketsByUser, parsed.lobbyId, stateAfter, session.playerNumberByUserId);
+            emitGameOver(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId);
         }
         ack?.({ ok: true });
     }));
     socket.on('drawTiles', (payload, ack) => guard(async () => {
         const parsed = drawTilesSchema.parse(payload);
-        const session = sessionManager.getSession(parsed.lobbyId);
+        const lobbyId = parsed.lobbyId.toUpperCase();
+        const session = sessionManager.getSession(lobbyId);
         if (!session)
             throw new Error('Game session not found');
         const playerNumber = session.playerNumberByUserId.get(socket.data.user.userId);
@@ -158,13 +181,13 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             await persistence.appendSessionEvents(session);
         }
         const stateAfter = session.engine.getGameState();
-        emitStateToLobby(io, socketsByUser, parsed.lobbyId, stateAfter, session.playerNumberByUserId, 'Tiles exchanged');
+        emitStateToLobby(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId, 'Tiles exchanged');
         if (stateAfter.isGameOver) {
-            const activeLobby = lobbyManager.getLobby(parsed.lobbyId);
+            const activeLobby = lobbyManager.getLobby(lobbyId);
             if (persistence && activeLobby) {
                 await persistence.completeGame(session, activeLobby, stateAfter);
             }
-            emitGameOver(io, socketsByUser, parsed.lobbyId, stateAfter, session.playerNumberByUserId);
+            emitGameOver(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId);
         }
         ack?.({ ok: true });
     }));

@@ -40,6 +40,25 @@ export class GameSessionManager {
     return this.sessions.get(lobbyId);
   }
 
+  reassignPlayerUserId(lobbyId: LobbyId, previousUserId: UserId, nextUserId: UserId): void {
+    const session = this.sessions.get(lobbyId);
+    if (!session) return;
+
+    const playerNumber = session.playerNumberByUserId.get(previousUserId);
+    if (playerNumber === undefined) return;
+
+    session.playerNumberByUserId.delete(previousUserId);
+    session.playerNumberByUserId.set(nextUserId, playerNumber);
+
+    if (session.dbUserIdByExternalUserId?.has(previousUserId)) {
+      const dbUserId = session.dbUserIdByExternalUserId.get(previousUserId);
+      session.dbUserIdByExternalUserId.delete(previousUserId);
+      if (dbUserId) {
+        session.dbUserIdByExternalUserId.set(nextUserId, dbUserId);
+      }
+    }
+  }
+
   deleteSession(lobbyId: LobbyId): void {
     this.sessions.delete(lobbyId);
   }

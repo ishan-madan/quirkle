@@ -72,10 +72,17 @@ export class TileBag {
      *               If not provided, uses non-deterministic Math.random().
      */
     shuffle(seed) {
-        let rng = seed !== undefined ? new SeededRandom(seed) : Math.random;
+        const nextRandom = seed !== undefined ? () => new SeededRandom(seed).next() : Math.random;
+        let seededRandom = null;
+        const random = seed !== undefined
+            ? (() => {
+                seededRandom ??= new SeededRandom(seed);
+                return seededRandom.next();
+            })
+            : nextRandom;
         // Fisher-Yates shuffle
         for (let i = this.tiles.length - 1; i > 0; i--) {
-            const j = Math.floor(typeof rng === 'function' ? rng() : rng.next()) * (i + 1);
+            const j = Math.floor(random() * (i + 1));
             const current = this.tiles[i];
             const selected = this.tiles[j];
             if (!current || !selected) {

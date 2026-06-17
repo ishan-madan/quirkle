@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { TileSet, Color, Shape } from '../src/index.js';
+import { TileBag, TileSet, Color, Shape } from '../src/index.js';
 
 describe('TileSet', () => {
   it('should generate all 36 tile types', () => {
@@ -72,5 +72,18 @@ describe('TileSet', () => {
     for (const count of typeCounts.values()) {
       expect(count).toBe(3);
     }
+  });
+
+  it('should actually shuffle tile order with a seed', () => {
+    const original = TileSet.generateFullTileSet().map((tile) => tile.id);
+    const bag = new TileBag(TileSet.generateFullTileSet());
+
+    bag.shuffle(42);
+
+    const shuffled = bag.getTiles().map((tile) => tile.id);
+    const firstSixColors = bag.drawTiles(6).map((tile) => tile.type.color);
+
+    expect(shuffled).not.toEqual(original);
+    expect(new Set(firstSixColors).size).toBeGreaterThan(1);
   });
 });
