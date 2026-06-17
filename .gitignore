@@ -1,1 +1,8 @@
+# Environment files
 .env
+.env.*
+!.env.example
+
+# Local overrides
+.env.local
+.env.*.local
