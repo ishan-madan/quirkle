@@ -11,8 +11,8 @@ import { createPool } from './db/client.js';
 import { PersistenceService } from './persistence/PersistenceService.js';
 import { registerPersistenceRoutes } from './api/persistenceRoutes.js';
 console.log("🔥 SERVER FILE IS RUNNING");
-const app = express();
 console.log("CORS_ORIGIN =", config.corsOrigin);
+const app = express();
 app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json());
 const persistence = config.enablePersistence && config.databaseUrl
