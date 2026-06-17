@@ -74,7 +74,7 @@ const lobbyManager = new LobbyManager();
 const sessionManager = new GameSessionManager();
 const socketsByUser = new Map<string, string>();
 
-// io.use(authenticateSocket);
+io.use(authenticateSocket);
 
 io.on('connection', (socket) => {
   registerHandlers(io, socket, lobbyManager, sessionManager, socketsByUser, persistence);
