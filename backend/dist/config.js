@@ -11,7 +11,6 @@ const getCorsOrigin = () => {
     if (!isProduction) {
         return ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
     }
-    console.log("CORS_ORIGIN =", config.corsOrigin);
     // Production: use configured origin
     return corsEnv || 'http://localhost:5173';
 };
