@@ -34,7 +34,7 @@ export function connectGameSocket({
   userId: string;
 }): GameSocket {
   return io(backendUrl, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     autoConnect: true,
     auth: { name, userId },
   });
