@@ -1739,3 +1739,26 @@ An engine that satisfies this README must:
 - Preserve hidden-information constraints in multiplayer mode.
 - Reject every invalid example in Section 15.2.
 - Accept every valid example in Section 15.1.
+
+## 18. Implementation Compliance Snapshot (June 17, 2026)
+
+This section records the current repository status against the canonical requirements above.
+
+Implemented and verified in current codebase:
+
+- 2-4 player support is enforced by game setup paths.
+- Server-authoritative gameplay is enforced by backend session ownership of GameEngine.
+- First player selection is server-side and randomized at game start.
+- Placement, exchange, pass, and scoring rules are enforced by engine validation and commit paths.
+- Qwirkle bonus handling is implemented in scoring.
+- Endgame supports rack depletion and bag-empty stalemate pass-cycle behavior.
+- Multiplayer hidden information is enforced by per-player filtered state emission.
+- Reconnection flow is implemented with lobby-scoped rejoin tokens.
+
+Partially verified items:
+
+- Section 15 contains 100 explicit scenario examples. Current automated tests cover major rule families, but there is not yet a 1:1 automated mapping proving every numbered scenario in 15.1 and 15.2.
+
+Operational interpretation note:
+
+- Section 14.2 explicitly permits pass on any turn. Current implementation follows that canonical recommendation.

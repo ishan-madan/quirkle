@@ -1230,3 +1230,29 @@ GET /api/status
 ---
 
 End of Architecture Design Document
+
+## 15. Current Implementation Status (June 17, 2026)
+
+This design document contains target-state architecture and planning details. The repository has since converged on a leaner implementation shape.
+
+Current implemented package layout:
+
+- packages/engine: shared deterministic rules engine.
+- packages/backend: Express + Socket.IO authoritative multiplayer service with optional Postgres persistence.
+- packages/frontend: React + Tailwind multiplayer client.
+
+Alignment highlights:
+
+- Server-authoritative game state is implemented.
+- Socket.IO realtime lobby/game event flow is implemented.
+- Sparse coordinate board model is implemented in engine and transport views.
+- Session-based identity with reconnect handling is implemented.
+- PostgreSQL schema, migrations, and persistence-backed stats/leaderboard endpoints are implemented.
+
+Differences from original target design sections:
+
+- The proposed packages/common module was not introduced; shared domain contracts are currently maintained per package where needed.
+- The broader REST surface in Section 6 was narrowed to persistence/analytics routes plus health.
+- Some planned service layering and file naming from Section 1 was simplified.
+
+Design direction remains valid, but Sections 1 through 14 should be interpreted as architectural intent plus rationale, not an exact file-for-file mirror of current repository contents.

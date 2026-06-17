@@ -1,118 +1,119 @@
 # Qwirkle Multiplayer Backend
 
-Node.js + Express + Socket.IO backend for multiplayer Qwirkle.
+Server-authoritative multiplayer backend built with Node.js, Express, Socket.IO, and PostgreSQL.
 
-Now includes Supabase/PostgreSQL persistence for users, games, game history, player stats, and match results.
+## What This Service Owns
 
-## Folder Structure
+- Lobby lifecycle (create, join, leave, host start).
+- Authoritative in-memory game sessions per lobby.
+- Move submission and validation via @qwirkle/engine.
+- Hidden-information transport (players only receive their own rack).
+- Reconnection support with per-player rejoin tokens.
+- Optional persistence for users, games, history, and leaderboard stats.
+
+## Project Structure
 
 ```text
 packages/backend/
   src/
-    config.ts
-    index.ts
-    api/
-      persistenceRoutes.ts
+    index.ts                     # Express + Socket.IO server bootstrap
+    config.ts                    # Environment configuration
+    api/persistenceRoutes.ts     # REST endpoints for persisted data
     db/
-      client.ts
-      migrate.ts
-      types.ts
+      client.ts                  # pg Pool creation
+      migrate.ts                 # SQL migration runner
+      types.ts                   # Persistence-layer row types
       repositories/
+        UserRepository.ts
         GameRepository.ts
         StatsRepository.ts
-        UserRepository.ts
-    game/
-      GameSessionManager.ts
-    lobby/
-      LobbyManager.ts
-    persistence/
-      PersistenceService.ts
+    game/GameSessionManager.ts   # Active game session orchestration
+    lobby/LobbyManager.ts        # In-memory lobby management
+    persistence/PersistenceService.ts
     socket/
-      emitters.ts
-      registerHandlers.ts
+      registerHandlers.ts        # Socket event handlers
+      emitters.ts                # Filtered per-player emits
+      validators.ts              # zod payload validation
       middleware/
         authenticateSocket.ts
         rateLimit.ts
     types/
       domain.ts
       socket.ts
-    utils/
-      id.ts
-  package.json
-  tsconfig.json
+    utils/id.ts
   db/
     schema.sql
     migrations/
       001_initial_schema.sql
 ```
 
+## Runtime Behavior
+
+- First player is selected server-side at random when a game session starts.
+- Moves are accepted only from the active player.
+- Pass is supported as an explicit turn action.
+- Tile exchange is allowed only when the bag contains at least as many tiles as requested.
+- Rate limiting is enforced per socket event window.
+
 ## Socket Events
 
-Client -> Server:
-- `createLobby`
-- `joinLobby`
-- `leaveLobby`
-- `startGame`
-- `submitMove`
-- `drawTiles`
+Client -> server:
 
-Server -> Client:
-- `lobbyUpdated`
-- `gameUpdate`
-- `gameOver`
-- `serverError`
+- createLobby: payload { name?: string }
+- joinLobby: payload { lobbyId: string, rejoinToken?: string }
+- leaveLobby: payload { lobbyId: string }
+- startGame: payload { lobbyId: string }
+- submitMove: payload { lobbyId: string, kind: 'place' | 'pass', placements?: [{ tileId, coordinate }] }
+- drawTiles: payload { lobbyId: string, tileIds: number[] }
 
-## SQL Schema + Migrations
+Server -> client:
 
-- Canonical schema: `db/schema.sql`
-- Migration entrypoint: `db/migrations/001_initial_schema.sql`
-- Migration runner: `npm run db:migrate`
+- lobbyUpdated: full lobby snapshot
+- gameUpdate: filtered player view + optional status message
+- gameOver: filtered final state
+- serverError: structured error payload { code, message }
 
-Tables:
-- `users`
-- `games`
-- `game_players`
-- `game_history`
-- `match_results`
-- `player_statistics`
+## REST Endpoints (Persistence)
 
-Indexes are included for:
-- Recent/completed game queries
-- Ranked history queries
-- Per-player game lookups
-- Turn-ordered history retrieval
-- MMR leaderboard queries
+- GET /health
+- GET /api/users/:externalUserId/stats
+- GET /api/games/:gameId
+- GET /api/leaderboard?limit=50
 
-## Architecture Notes
+When persistence is disabled or no database URL is configured, /api/* persistence routes return 503.
 
-- Server authoritative state via in-memory `GameSessionManager`.
-- Every move validated by `@qwirkle/engine` before commit.
-- Per-player filtered state views prevent rack leakage.
-- Socket middleware includes identity assignment + event rate limiting.
-- Active games are in memory for low-latency play; completed games are persisted.
-- Persistence is repository-based and fully typed in TypeScript.
-- Completed games are saved automatically at `gameOver`.
-- Move history is stored incrementally as `game_history` events.
-- Player statistics are updated transactionally on game completion.
-- Schema is prepared for future ranked matchmaking (`is_ranked`, `match_results`, MMR fields).
+## Database and Migrations
 
-## REST API Integration
+- Canonical schema: db/schema.sql
+- Migration files: db/migrations/*.sql
+- Migration command: npm run db:migrate
 
-- `GET /api/users/:externalUserId/stats`
-- `GET /api/games/:gameId`
-- `GET /api/leaderboard?limit=50`
+Primary tables:
 
-These routes read from PostgreSQL and return typed persistence-backed results.
+- users
+- games
+- game_players
+- game_history
+- match_results
+- player_statistics
 
-## Environment
+## Environment Variables
 
-- `DATABASE_URL` or `SUPABASE_DB_URL` (required for persistence)
-- `ENABLE_PERSISTENCE` (`true` by default)
-- `PORT`
-- `CORS_ORIGIN`
-- `MAX_EVENTS_PER_SECOND`
+- DATABASE_URL: Postgres connection string.
+- SUPABASE_DB_URL: fallback if DATABASE_URL is unset.
+- ENABLE_PERSISTENCE: defaults to true; set false to run without DB writes.
+- PORT: defaults to 4000.
+- CORS_ORIGIN: defaults to http://localhost:5173.
+- MAX_EVENTS_PER_SECOND: defaults to 20.
 
-## Run
+## Scripts
+
+- npm run dev: start with tsx watch.
+- npm run build: compile TypeScript.
+- npm start: run built output from dist.
+- npm run db:migrate: apply pending SQL migrations.
+
+## Local Development
 
 ```bash
 cd packages/backend
@@ -121,7 +122,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Build:
+For production-style execution:
 
 ```bash
 npm run build
