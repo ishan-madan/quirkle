@@ -33,5 +33,5 @@ io.on('connection', (socket) => {
 });
 httpServer.listen(config.port, () => {
     // eslint-disable-next-line no-console
-    console.log(`Backend listening on http://localhost:${config.port}`);
+    console.log(`Backend listening on port ${config.port}`);
 });
