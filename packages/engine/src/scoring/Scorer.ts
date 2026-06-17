@@ -40,10 +40,10 @@ export class Scorer {
       placementMap.set(placement.coordinate, tile);
     }
 
-    // Determine primary axis
+    // Determine primary axis for multi-tile moves only.
     const coords = placements.map((p) => p.coordinate);
-    const primaryAxis = coords.length === 1 ? 'horizontal' : CoordinateUtil.getAxis(coords);
-    if (!primaryAxis) {
+    const primaryAxis = coords.length > 1 ? CoordinateUtil.getAxis(coords) : null;
+    if (coords.length > 1 && !primaryAxis) {
       return {
         success: false,
         total: 0,
@@ -65,48 +65,82 @@ export class Scorer {
     const scoredLineKeys = new Set<string>();
     let total = 0;
 
-    // Primary line
-    const primaryLine = this.getPrimaryLine(placements, workingBoard, primaryAxis);
-    if (primaryLine.length > 0) {
-      const result = this.scoreLine(primaryLine, workingBoard);
-      if (!result) {
-        return {
-          success: false,
-          total: 0,
-          lineScores: [],
-          error: 'Invalid primary line',
-        };
+    if (placements.length === 1) {
+      const coordinate = placements[0]!.coordinate;
+      const horizontalLine = this.getPerpendicularLine(coordinate, workingBoard, 'horizontal');
+      const verticalLine = this.getPerpendicularLine(coordinate, workingBoard, 'vertical');
+
+      const linesToScore: Coordinate[][] = [];
+      if (horizontalLine.length > 1) linesToScore.push(horizontalLine);
+      if (verticalLine.length > 1) linesToScore.push(verticalLine);
+
+      // If the tile does not extend any line, the move is worth exactly 1 point.
+      if (linesToScore.length === 0) {
+        linesToScore.push(horizontalLine);
       }
 
-      const key = primaryLine.join('|');
-      if (!scoredLineKeys.has(key)) {
-        scoredLineKeys.add(key);
-        lineScores.push(result);
-        total += result.points;
-      }
-    }
-
-    // Perpendicular lines
-    const perpendicularAxis = primaryAxis === 'horizontal' ? 'vertical' : 'horizontal';
-    for (const placement of placements) {
-      const perpLine = this.getPerpendicularLine(placement.coordinate, workingBoard, perpendicularAxis);
-
-      if (perpLine.length > 1) {
-        const result = this.scoreLine(perpLine, workingBoard);
+      for (const line of linesToScore) {
+        const result = this.scoreLine(line, workingBoard);
         if (!result) {
           return {
             success: false,
             total: 0,
             lineScores: [],
-            error: 'Invalid perpendicular line',
+            error: 'Invalid line',
           };
         }
 
-        const key = perpLine.join('|');
+        const key = line.join('|');
         if (!scoredLineKeys.has(key)) {
           scoredLineKeys.add(key);
           lineScores.push(result);
           total += result.points;
+        }
+      }
+    } else {
+      // Primary line
+      const primaryLine = this.getPrimaryLine(placements, workingBoard, primaryAxis!);
+      if (primaryLine.length > 0) {
+        const result = this.scoreLine(primaryLine, workingBoard);
+        if (!result) {
+          return {
+            success: false,
+            total: 0,
+            lineScores: [],
+            error: 'Invalid primary line',
+          };
+        }
+
+        const key = primaryLine.join('|');
+        if (!scoredLineKeys.has(key)) {
+          scoredLineKeys.add(key);
+          lineScores.push(result);
+          total += result.points;
+        }
+      }
+
+      // Perpendicular lines
+      const perpendicularAxis = primaryAxis === 'horizontal' ? 'vertical' : 'horizontal';
+      for (const placement of placements) {
+        const perpLine = this.getPerpendicularLine(placement.coordinate, workingBoard, perpendicularAxis);
+
+        if (perpLine.length > 1) {
+          const result = this.scoreLine(perpLine, workingBoard);
+          if (!result) {
+            return {
+              success: false,
+              total: 0,
+              lineScores: [],
+              error: 'Invalid perpendicular line',
+            };
+          }
+
+          const key = perpLine.join('|');
+          if (!scoredLineKeys.has(key)) {
+            scoredLineKeys.add(key);
+            lineScores.push(result);
+            total += result.points;
+          }
         }
       }
     }
