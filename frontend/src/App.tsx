@@ -4,7 +4,6 @@ import { Board as EngineBoard, MoveValidator, type Coordinate, type TileInstance
 import { BoardViewport } from './components/BoardViewport';
 import { GameHeader } from './components/GameHeader';
 import { TileRack } from './components/TileRack';
-import { getFrontendEnv } from './lib/env';
 import { connectGameSocket, type GameSocket } from './network/socket';
 import type { Lobby, ServerStateView } from './types/multiplayer';
 
@@ -202,8 +201,6 @@ export default function App() {
   const lobbyActionErrorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rejoinBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { apiUrl, socketUrl } = getFrontendEnv();
-
   const selfPlayer = useMemo(() => {
     if (!gameState) return null;
     return gameState.players.find((p) => p.rack.length > 0) ?? gameState.players[0] ?? null;
@@ -252,7 +249,6 @@ export default function App() {
     localStorage.setItem(STORAGE.name, trimmedName);
 
     const socket = connectGameSocket({
-      socketUrl,
       name: trimmedName,
       userId: userIdRef.current,
     });
@@ -339,7 +335,7 @@ export default function App() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [apiUrl, name, socketUrl]);
+  }, [name]);
 
   const requireSocket = (): GameSocket => {
     const socket = socketRef.current;

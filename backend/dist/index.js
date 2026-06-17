@@ -1,4 +1,6 @@
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
@@ -12,9 +14,6 @@ import { PersistenceService } from './persistence/PersistenceService.js';
 import { registerPersistenceRoutes } from './api/persistenceRoutes.js';
 import { maskDatabaseUrl } from './config.js';
 function assertStartupConfig() {
-    if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
-        throw new Error('CORS_ORIGIN is undefined in production. Aborting startup.');
-    }
 }
 function logStartupConfig() {
     // eslint-disable-next-line no-console
@@ -33,6 +32,10 @@ assertStartupConfig();
 const app = express();
 app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json());
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+const frontendIndexPath = path.join(frontendDistPath, 'index.html');
 const persistence = config.enablePersistence === 'false' || !config.databaseUrl
     ? null
     : new PersistenceService(createPool(config.databaseUrl));
@@ -45,15 +48,8 @@ const io = new Server(httpServer, {
     cors: {
         origin: config.corsOrigin,
         methods: ['GET', 'POST'],
-        credentials: false,
+        credentials: true,
     },
-});
-app.get('/', (_req, res) => {
-    res.json({
-        status: 'ok',
-        service: 'qwirkle-backend',
-        time: new Date().toISOString(),
-    });
 });
 const lobbyManager = new LobbyManager();
 const sessionManager = new GameSessionManager();
@@ -62,8 +58,12 @@ io.use(authenticateSocket);
 io.on('connection', (socket) => {
     registerHandlers(io, socket, lobbyManager, sessionManager, socketsByUser, persistence);
 });
+app.use(express.static(frontendDistPath));
+app.get('*', (_req, res) => {
+    res.sendFile(frontendIndexPath);
+});
 const PORT = Number(process.env.PORT) || 4000;
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
     // eslint-disable-next-line no-console
     console.log(`Backend listening on port ${PORT}`);
 });
