@@ -10,14 +10,32 @@ import { registerHandlers } from './socket/registerHandlers.js';
 import { createPool } from './db/client.js';
 import { PersistenceService } from './persistence/PersistenceService.js';
 import { registerPersistenceRoutes } from './api/persistenceRoutes.js';
-console.log("🔥 SERVER FILE IS RUNNING");
-console.log("CORS_ORIGIN =", config.corsOrigin);
+import { maskDatabaseUrl } from './config.js';
+function assertStartupConfig() {
+    if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
+        throw new Error('CORS_ORIGIN is undefined in production. Aborting startup.');
+    }
+}
+function logStartupConfig() {
+    // eslint-disable-next-line no-console
+    console.log('[boot] NODE_ENV=%s', process.env.NODE_ENV ?? '(undefined)');
+    // eslint-disable-next-line no-console
+    console.log('[boot] PORT=%s', process.env.PORT ?? '(undefined)');
+    // eslint-disable-next-line no-console
+    console.log('[boot] CORS_ORIGIN env=%s', process.env.CORS_ORIGIN ?? '(undefined)');
+    // eslint-disable-next-line no-console
+    console.log('[boot] config.corsOrigin=%s', config.corsOrigin ?? '(undefined)');
+    // eslint-disable-next-line no-console
+    console.log('[boot] DATABASE_URL=%s', maskDatabaseUrl(process.env.DATABASE_URL));
+}
+logStartupConfig();
+assertStartupConfig();
 const app = express();
 app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json());
-const persistence = config.enablePersistence && config.databaseUrl
-    ? new PersistenceService(createPool(config.databaseUrl))
-    : null;
+const persistence = config.enablePersistence === 'false' || !config.databaseUrl
+    ? null
+    : new PersistenceService(createPool(config.databaseUrl));
 registerPersistenceRoutes(app, persistence);
 app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'qwirkle-backend' });
@@ -30,10 +48,10 @@ const io = new Server(httpServer, {
         credentials: false,
     },
 });
-app.get("/", (_req, res) => {
+app.get('/', (_req, res) => {
     res.json({
-        status: "ok",
-        service: "qwirkle-backend",
+        status: 'ok',
+        service: 'qwirkle-backend',
         time: new Date().toISOString(),
     });
 });
@@ -44,7 +62,8 @@ io.use(authenticateSocket);
 io.on('connection', (socket) => {
     registerHandlers(io, socket, lobbyManager, sessionManager, socketsByUser, persistence);
 });
-httpServer.listen(config.port, () => {
+const PORT = Number(process.env.PORT) || 4000;
+httpServer.listen(PORT, () => {
     // eslint-disable-next-line no-console
-    console.log(`Backend listening on http://localhost:${config.port}`);
+    console.log(`Backend listening on port ${PORT}`);
 });
