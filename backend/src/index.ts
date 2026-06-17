@@ -25,10 +25,6 @@ const persistence =
 
 registerPersistenceRoutes(app, persistence);
 
-app.get('/', (_req, res) => {
-  res.send('Qwirkle backend running');
-});
-
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'qwirkle-backend' });
 });

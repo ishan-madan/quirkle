@@ -10,6 +10,7 @@ import { registerHandlers } from './socket/registerHandlers.js';
 import { createPool } from './db/client.js';
 import { PersistenceService } from './persistence/PersistenceService.js';
 import { registerPersistenceRoutes } from './api/persistenceRoutes.js';
+console.log("🔥 SERVER FILE IS RUNNING");
 const app = express();
 app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json());
@@ -17,9 +18,6 @@ const persistence = config.enablePersistence && config.databaseUrl
     ? new PersistenceService(createPool(config.databaseUrl))
     : null;
 registerPersistenceRoutes(app, persistence);
-app.get('/', (_req, res) => {
-    res.send('Qwirkle backend running');
-});
 app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'qwirkle-backend' });
 });
@@ -30,6 +28,13 @@ const io = new Server(httpServer, {
         methods: ['GET', 'POST'],
         credentials: false,
     },
+});
+app.get("/", (_req, res) => {
+    res.json({
+        status: "ok",
+        service: "qwirkle-backend",
+        time: new Date().toISOString(),
+    });
 });
 const lobbyManager = new LobbyManager();
 const sessionManager = new GameSessionManager();
