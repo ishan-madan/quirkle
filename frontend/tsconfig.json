@@ -10,8 +10,8 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@engine": ["../engine/src/index.ts"],
-      "@engine/*": ["../engine/src/*"]
+      "@engine": ["../packages/engine/src/index.ts"],
+      "@engine/*": ["../packages/engine/src/*"]
     }
   },
   "include": ["src"]

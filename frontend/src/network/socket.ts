@@ -25,15 +25,15 @@ type ClientToServerEvents = {
 export type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 export function connectGameSocket({
-  backendUrl,
+  socketUrl,
   name,
   userId,
 }: {
-  backendUrl: string;
+  socketUrl: string;
   name: string;
   userId: string;
 }): GameSocket {
-  return io(backendUrl, {
+  return io(socketUrl, {
     transports: ['websocket'],
     autoConnect: true,
     auth: { name, userId },
