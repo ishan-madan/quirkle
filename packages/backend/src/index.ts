@@ -37,12 +37,11 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
 
 const lobbyManager = new LobbyManager();
 const sessionManager = new GameSessionManager();
-const socketsByUser = new Map<string, string>();
 
 io.use(authenticateSocket);
 
 io.on('connection', (socket) => {
-  registerHandlers(io, socket, lobbyManager, sessionManager, socketsByUser, persistence);
+  registerHandlers(io, socket, lobbyManager, sessionManager, persistence);
 });
 
 httpServer.listen(config.port, () => {

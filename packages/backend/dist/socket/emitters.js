@@ -101,18 +101,26 @@ function toClientLobby(lobby) {
         })),
     };
 }
-export function emitStateToLobby(io, socketsByUser, lobbyId, state, playerNumberByUserId, message) {
-    for (const [userId, userPlayerNumber] of playerNumberByUserId) {
-        const socketId = socketsByUser.get(userId);
-        if (!socketId)
-            continue;
-        const view = toClientState(state, userPlayerNumber);
-        io.to(socketId).emit('gameUpdate', {
-            lobbyId,
-            state: view,
-            ...(message !== undefined ? { message } : {}),
-        });
-    }
+export function emitStateToLobby(io, lobbyId, state, playerNumberByUserId, message) {
+    return io
+        .in(lobbyId)
+        .fetchSockets()
+        .then((roomSockets) => {
+        // eslint-disable-next-line no-console
+        console.log(`[socket] gameUpdate emit lobby=${lobbyId} sockets=${roomSockets.length} turn=${state.turnNumber}`);
+        for (const roomSocket of roomSockets) {
+            const userId = roomSocket.data.user.userId;
+            const userPlayerNumber = playerNumberByUserId.get(userId);
+            if (!userPlayerNumber)
+                continue;
+            const view = toClientState(state, userPlayerNumber);
+            io.to(roomSocket.id).emit('gameUpdate', {
+                lobbyId,
+                state: view,
+                ...(message !== undefined ? { message } : {}),
+            });
+        }
+    });
 }
 export function emitServerError(socket, code, message) {
     socket.emit('serverError', { code, message });

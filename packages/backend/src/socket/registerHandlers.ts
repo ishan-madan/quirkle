@@ -30,11 +30,8 @@ export function registerHandlers(
   socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
   lobbyManager: LobbyManager,
   sessionManager: GameSessionManager,
-  socketsByUser: Map<string, string>,
   persistence: PersistenceService | null
 ): void {
-  socketsByUser.set(socket.data.user.userId, socket.id);
-
   const guard = (fn: () => void | Promise<void>) => {
     if (!checkRateLimit(socket, config.maxEventsPerSecond)) {
       emitServerError(socket, 'RATE_LIMIT', 'Too many events. Slow down.');
@@ -81,7 +78,6 @@ export function registerHandlers(
       }, parsed.rejoinToken);
 
       if (reclaimedUserId) {
-        socketsByUser.delete(reclaimedUserId);
         sessionManager.reassignPlayerUserId(lobbyId, reclaimedUserId, socket.data.user.userId);
       }
 
@@ -145,9 +141,8 @@ export function registerHandlers(
       emitLobby(io, { ...lobby, gameStarted: true });
 
       const rawState = session.engine.getGameState();
-      emitStateToLobby(
+      await emitStateToLobby(
         io,
-        socketsByUser,
         lobby.id,
         rawState,
         session.playerNumberByUserId,
@@ -172,6 +167,11 @@ export function registerHandlers(
       if (stateBefore.currentPlayerNumber !== playerNumber) {
         throw new Error('Not your turn');
       }
+
+      // eslint-disable-next-line no-console
+      console.log(
+        `[socket] submitMove lobby=${lobbyId} user=${socket.data.user.userId} player=${playerNumber} kind=${parsed.kind}`
+      );
 
       let result;
       if (parsed.kind === 'pass') {
@@ -207,9 +207,8 @@ export function registerHandlers(
       }
 
       const stateAfter = session.engine.getGameState();
-      emitStateToLobby(
+      await emitStateToLobby(
         io,
-        socketsByUser,
         lobbyId,
         stateAfter,
         session.playerNumberByUserId,
@@ -221,7 +220,7 @@ export function registerHandlers(
         if (persistence && activeLobby) {
           await persistence.completeGame(session, activeLobby, stateAfter);
         }
-        emitGameOver(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId);
+        emitGameOver(io, lobbyId, stateAfter, session.playerNumberByUserId);
       }
 
       ack?.({ ok: true });
@@ -261,9 +260,8 @@ export function registerHandlers(
       }
 
       const stateAfter = session.engine.getGameState();
-      emitStateToLobby(
+      await emitStateToLobby(
         io,
-        socketsByUser,
         lobbyId,
         stateAfter,
         session.playerNumberByUserId,
@@ -275,7 +273,7 @@ export function registerHandlers(
         if (persistence && activeLobby) {
           await persistence.completeGame(session, activeLobby, stateAfter);
         }
-        emitGameOver(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId);
+        emitGameOver(io, lobbyId, stateAfter, session.playerNumberByUserId);
       }
 
       ack?.({ ok: true });
@@ -283,9 +281,7 @@ export function registerHandlers(
   );
 
   socket.on('disconnect', () => {
-    socketsByUser.delete(socket.data.user.userId);
-
-    const touched = lobbyManager.markDisconnected(socket.data.user.userId);
+    const touched = lobbyManager.markDisconnected(socket.data.user.userId, socket.id);
     for (const lobby of touched) {
       emitLobby(io, lobby);
     }
@@ -301,15 +297,23 @@ function clearDraft(engine: { getGameState: () => GameState; undoLastPlacement: 
 
 function emitGameOver(
   io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  socketsByUser: Map<string, string>,
   lobbyId: string,
   state: GameState,
   playerNumberByUserId: Map<string, number>
 ): void {
-  for (const [userId, playerNumber] of playerNumberByUserId) {
-    const socketId = socketsByUser.get(userId);
-    if (!socketId) continue;
-    const view = toClientState(state, playerNumber);
-    io.to(socketId).emit('gameOver', { lobbyId, state: view });
-  }
+  void io
+    .in(lobbyId)
+    .fetchSockets()
+    .then((roomSockets) => {
+      // eslint-disable-next-line no-console
+      console.log(`[socket] gameOver emit lobby=${lobbyId} sockets=${roomSockets.length}`);
+
+      for (const roomSocket of roomSockets) {
+        const playerNumber = playerNumberByUserId.get(roomSocket.data.user.userId);
+        if (!playerNumber) continue;
+
+        const view = toClientState(state, playerNumber);
+        io.to(roomSocket.id).emit('gameOver', { lobbyId, state: view });
+      }
+    });
 }

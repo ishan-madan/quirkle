@@ -54,11 +54,13 @@ export class LobbyManager {
         lobby.players.push(nextPlayer);
         return { lobby, rejoinToken: nextPlayer.rejoinToken };
     }
-    markDisconnected(userId) {
+    markDisconnected(userId, socketId) {
         const touched = [];
         for (const lobby of this.lobbies.values()) {
             const player = lobby.players.find((p) => p.userId === userId);
             if (!player)
+                continue;
+            if (player.socketId !== socketId)
                 continue;
             player.connected = false;
             player.socketId = '';

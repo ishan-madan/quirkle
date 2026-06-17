@@ -257,6 +257,12 @@ export default function App() {
     });
     socketRef.current = socket;
 
+    const onAnyEvent = (eventName: string, ...args: unknown[]) => {
+      // eslint-disable-next-line no-console
+      console.log('[socket] received', eventName, ...args);
+    };
+    socket.onAny(onAnyEvent);
+
     socket.on('connect', () => {
       setIsConnected(true);
       setStatus('Connected to backend.');
@@ -335,6 +341,7 @@ export default function App() {
       if (rejoinBannerTimeoutRef.current) {
         clearTimeout(rejoinBannerTimeoutRef.current);
       }
+      socket.offAny(onAnyEvent);
       socket.disconnect();
       socketRef.current = null;
     };

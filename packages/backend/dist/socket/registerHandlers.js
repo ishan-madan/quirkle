@@ -3,8 +3,7 @@ import { emitLobby, emitServerError, emitStateToLobby, toClientState } from './e
 import { config } from '../config.js';
 import { makeRejoinToken } from '../utils/id.js';
 import { createLobbySchema, drawTilesSchema, joinLobbySchema, lobbyIdSchema, submitMoveSchema, } from './validators.js';
-export function registerHandlers(io, socket, lobbyManager, sessionManager, socketsByUser, persistence) {
-    socketsByUser.set(socket.data.user.userId, socket.id);
+export function registerHandlers(io, socket, lobbyManager, sessionManager, persistence) {
     const guard = (fn) => {
         if (!checkRateLimit(socket, config.maxEventsPerSecond)) {
             emitServerError(socket, 'RATE_LIMIT', 'Too many events. Slow down.');
@@ -43,7 +42,6 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             connected: true,
         }, parsed.rejoinToken);
         if (reclaimedUserId) {
-            socketsByUser.delete(reclaimedUserId);
             sessionManager.reassignPlayerUserId(lobbyId, reclaimedUserId, socket.data.user.userId);
         }
         socket.join(lobby.id);
@@ -97,7 +95,7 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
         lobbyManager.setGameStarted(lobbyId, true);
         emitLobby(io, { ...lobby, gameStarted: true });
         const rawState = session.engine.getGameState();
-        emitStateToLobby(io, socketsByUser, lobby.id, rawState, session.playerNumberByUserId, 'Game started');
+        await emitStateToLobby(io, lobby.id, rawState, session.playerNumberByUserId, 'Game started');
         ack?.({ ok: true });
     }));
     socket.on('submitMove', (payload, ack) => guard(async () => {
@@ -113,6 +111,8 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
         if (stateBefore.currentPlayerNumber !== playerNumber) {
             throw new Error('Not your turn');
         }
+        // eslint-disable-next-line no-console
+        console.log(`[socket] submitMove lobby=${lobbyId} user=${socket.data.user.userId} player=${playerNumber} kind=${parsed.kind}`);
         let result;
         if (parsed.kind === 'pass') {
             result = session.engine.pass();
@@ -143,13 +143,13 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             await persistence.appendSessionEvents(session);
         }
         const stateAfter = session.engine.getGameState();
-        emitStateToLobby(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId, parsed.kind === 'pass' ? 'Turn passed' : `Move accepted (+${result.score ?? 0})`);
+        await emitStateToLobby(io, lobbyId, stateAfter, session.playerNumberByUserId, parsed.kind === 'pass' ? 'Turn passed' : `Move accepted (+${result.score ?? 0})`);
         if (stateAfter.isGameOver) {
             const activeLobby = lobbyManager.getLobby(lobbyId);
             if (persistence && activeLobby) {
                 await persistence.completeGame(session, activeLobby, stateAfter);
             }
-            emitGameOver(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId);
+            emitGameOver(io, lobbyId, stateAfter, session.playerNumberByUserId);
         }
         ack?.({ ok: true });
     }));
@@ -181,19 +181,18 @@ export function registerHandlers(io, socket, lobbyManager, sessionManager, socke
             await persistence.appendSessionEvents(session);
         }
         const stateAfter = session.engine.getGameState();
-        emitStateToLobby(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId, 'Tiles exchanged');
+        await emitStateToLobby(io, lobbyId, stateAfter, session.playerNumberByUserId, 'Tiles exchanged');
         if (stateAfter.isGameOver) {
             const activeLobby = lobbyManager.getLobby(lobbyId);
             if (persistence && activeLobby) {
                 await persistence.completeGame(session, activeLobby, stateAfter);
             }
-            emitGameOver(io, socketsByUser, lobbyId, stateAfter, session.playerNumberByUserId);
+            emitGameOver(io, lobbyId, stateAfter, session.playerNumberByUserId);
         }
         ack?.({ ok: true });
     }));
     socket.on('disconnect', () => {
-        socketsByUser.delete(socket.data.user.userId);
-        const touched = lobbyManager.markDisconnected(socket.data.user.userId);
+        const touched = lobbyManager.markDisconnected(socket.data.user.userId, socket.id);
         for (const lobby of touched) {
             emitLobby(io, lobby);
         }
@@ -206,12 +205,19 @@ function clearDraft(engine) {
             break;
     }
 }
-function emitGameOver(io, socketsByUser, lobbyId, state, playerNumberByUserId) {
-    for (const [userId, playerNumber] of playerNumberByUserId) {
-        const socketId = socketsByUser.get(userId);
-        if (!socketId)
-            continue;
-        const view = toClientState(state, playerNumber);
-        io.to(socketId).emit('gameOver', { lobbyId, state: view });
-    }
+function emitGameOver(io, lobbyId, state, playerNumberByUserId) {
+    void io
+        .in(lobbyId)
+        .fetchSockets()
+        .then((roomSockets) => {
+        // eslint-disable-next-line no-console
+        console.log(`[socket] gameOver emit lobby=${lobbyId} sockets=${roomSockets.length}`);
+        for (const roomSocket of roomSockets) {
+            const playerNumber = playerNumberByUserId.get(roomSocket.data.user.userId);
+            if (!playerNumber)
+                continue;
+            const view = toClientState(state, playerNumber);
+            io.to(roomSocket.id).emit('gameOver', { lobbyId, state: view });
+        }
+    });
 }
