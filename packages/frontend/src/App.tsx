@@ -697,13 +697,21 @@ export default function App() {
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-black/70">Waiting Room</h2>
                 <div className="flex gap-2">
+                  <div className="relative inline-block group">
                   <button
-                    disabled={userIdRef.current !== lobby.hostUserId}
+                    disabled={!userIdRef.current || userIdRef.current !== lobby.hostUserId}
                     onClick={handleStartGame}
-                    className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                    className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-75"
                   >
                     Start Game
                   </button>
+
+                  {userIdRef.current !== lobby.hostUserId && (
+                    <div className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
+                      Only the host can start the game
+                    </div>
+                  )}
+                </div>
                   <button
                     onClick={handleLeaveLobby}
                     className="rounded-lg border border-red-600/70 bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
