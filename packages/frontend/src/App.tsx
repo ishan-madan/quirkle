@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
-import type { Coordinate, TileInstance } from '@engine/types';
+import { Board as EngineBoard, MoveValidator, type Coordinate, type TileInstance } from '@engine';
 import { BoardViewport } from './components/BoardViewport';
 import { GameHeader } from './components/GameHeader';
-import { Scoreboard } from './components/Scoreboard';
 import { TileRack } from './components/TileRack';
 import { connectGameSocket, type GameSocket } from './network/socket';
 import type { Lobby, ServerStateView } from './types/multiplayer';
@@ -31,6 +30,86 @@ function toBoardMap(state: ServerStateView | null): Map<Coordinate, TileInstance
   return map;
 }
 
+type DraftPlacement = { tileId: number; coordinate: Coordinate };
+
+function canPlaceDraftTile(
+  state: ServerStateView | null,
+  selfPlayer: ServerStateView['players'][number] | null,
+  draftPlacements: DraftPlacement[],
+  tileId: number,
+  coordinate: Coordinate
+): boolean {
+  if (!state || !selfPlayer || selfPlayer.playerNumber !== state.currentPlayerNumber) {
+    return false;
+  }
+
+  const nextPlacements = draftPlacements.filter((placement) => placement.tileId !== tileId);
+  nextPlacements.push({ tileId, coordinate });
+
+  const board = new EngineBoard(toBoardMap(state));
+  const validation = MoveValidator.validatePlacement(
+    nextPlacements,
+    selfPlayer.rack as TileInstance[],
+    board,
+    state.boardEntries.length === 0
+  );
+
+  return validation === null;
+}
+
+function computeDraftValidTargets(
+  state: ServerStateView | null,
+  selfPlayer: ServerStateView['players'][number] | null,
+  draftPlacements: DraftPlacement[]
+): Set<Coordinate> {
+  if (!state || !selfPlayer || selfPlayer.playerNumber !== state.currentPlayerNumber) {
+    return new Set<Coordinate>();
+  }
+
+  const placedIds = new Set(draftPlacements.map((placement) => placement.tileId));
+  const availableTiles = selfPlayer.rack.filter((tile) => !placedIds.has(tile.id));
+  if (availableTiles.length === 0) {
+    return new Set<Coordinate>();
+  }
+
+  const boardTiles = toBoardMap(state);
+  const occupied = new Set<Coordinate>(boardTiles.keys());
+  for (const placement of draftPlacements) {
+    occupied.add(placement.coordinate);
+  }
+
+  const candidates = new Set<Coordinate>();
+  if (occupied.size === 0) {
+    candidates.add('0,0' as Coordinate);
+  } else {
+    for (const coord of occupied) {
+      const [xPart, yPart] = coord.split(',');
+      const x = Number(xPart);
+      const y = Number(yPart);
+      candidates.add(`${x + 1},${y}` as Coordinate);
+      candidates.add(`${x - 1},${y}` as Coordinate);
+      candidates.add(`${x},${y + 1}` as Coordinate);
+      candidates.add(`${x},${y - 1}` as Coordinate);
+    }
+  }
+
+  const valid = new Set<Coordinate>();
+  for (const candidate of candidates) {
+    if (occupied.has(candidate)) {
+      continue;
+    }
+
+    for (const tile of availableTiles) {
+      if (canPlaceDraftTile(state, selfPlayer, draftPlacements, tile.id, candidate)) {
+        valid.add(candidate);
+        break;
+      }
+    }
+  }
+
+  return valid;
+}
+
 export default function App() {
   const [name, setName] = useState<string>(() => localStorage.getItem(STORAGE.name) ?? '');
   const [lobbyIdInput, setLobbyIdInput] = useState<string>('');
@@ -39,23 +118,21 @@ export default function App() {
   const [gameState, setGameState] = useState<ServerStateView | null>(null);
   const [error, setError] = useState<string>('');
   const [status, setStatus] = useState<string>('');
+  const [lastTurnPoints, setLastTurnPoints] = useState<string>('No turns completed yet.');
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  const [draftPlacements, setDraftPlacements] = useState<Array<{ tileId: number; coordinate: Coordinate }>>([]);
+  const [draftPlacements, setDraftPlacements] = useState<DraftPlacement[]>([]);
   const [selectedForExchange, setSelectedForExchange] = useState<Set<number>>(new Set());
 
   const [scale, setScale] = useState<number>(1);
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 120, y: 120 });
+  const [scoreboardHeight, setScoreboardHeight] = useState<number | null>(null);
 
   const socketRef = useRef<GameSocket | null>(null);
   const userIdRef = useRef<string>('');
+  const scoreboardRef = useRef<HTMLDivElement | null>(null);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:4000';
-
-  const currentPlayer = useMemo(() => {
-    if (!gameState) return null;
-    return gameState.players.find((p) => p.isCurrent) ?? null;
-  }, [gameState]);
 
   const selfPlayer = useMemo(() => {
     if (!gameState) return null;
@@ -75,7 +152,16 @@ export default function App() {
     return map;
   }, [selfPlayer, draftPlacements]);
 
-  const validTargets = useMemo(() => new Set<Coordinate>(gameState?.validTargets ?? []), [gameState]);
+  const visibleRackTiles = useMemo(() => {
+    if (!selfPlayer) return [];
+    const placedIds = new Set(draftPlacements.map((placement) => placement.tileId));
+    return selfPlayer.rack.filter((tile) => !placedIds.has(tile.id));
+  }, [selfPlayer, draftPlacements]);
+
+  const validTargets = useMemo(
+    () => computeDraftValidTargets(gameState, selfPlayer, draftPlacements),
+    [gameState, selfPlayer, draftPlacements]
+  );
 
   useEffect(() => {
     const trimmedName = name.trim();
@@ -119,7 +205,17 @@ export default function App() {
       setGameState(state);
       setDraftPlacements([]);
       setSelectedForExchange(new Set());
-      if (message) setStatus(message);
+      if (message) {
+        setStatus(message);
+        const pointsMatch = message.match(/(\d+)\s+point/i);
+        if (pointsMatch) {
+          setLastTurnPoints(`${pointsMatch[1]} points on the last turn.`);
+        } else if (/pass/i.test(message)) {
+          setLastTurnPoints('0 points on the last turn (pass).');
+        } else if (/exchange|draw/i.test(message)) {
+          setLastTurnPoints('0 points on the last turn (exchange).');
+        }
+      }
       setError('');
     });
 
@@ -211,16 +307,24 @@ export default function App() {
   };
 
   const onDropTile = (coordinate: Coordinate, tileId: number) => {
-    setError('');
+    if (!canPlaceDraftTile(gameState, selfPlayer, draftPlacements, tileId, coordinate)) {
+      setError('That position is not legal for the current draft.');
+      return;
+    }
+
     setDraftPlacements((prev) => {
-      if (prev.some((p) => p.coordinate === coordinate)) {
+      const next = prev.filter((placement) => placement.tileId !== tileId);
+      if (next.some((placement) => placement.coordinate === coordinate)) {
         return prev;
       }
-      if (prev.some((p) => p.tileId === tileId)) {
-        return prev;
-      }
-      return [...prev, { tileId, coordinate }];
+      return [...next, { tileId, coordinate }];
     });
+    setError('');
+  };
+
+  const onRemoveDraftTile = (tileId: number) => {
+    setDraftPlacements((prev) => prev.filter((placement) => placement.tileId !== tileId));
+    setError('');
   };
 
   const onUndo = () => {
@@ -306,6 +410,32 @@ export default function App() {
     setScale((prev) => Math.min(2.3, Math.max(0.45, prev + delta)));
   };
 
+  useLayoutEffect(() => {
+    const element = scoreboardRef.current;
+    if (!element) return;
+
+    const updateHeight = () => {
+      setScoreboardHeight(element.getBoundingClientRect().height);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [gameState, error, lastTurnPoints]);
+
+  const copyLobbyCode = async () => {
+    if (!joinedLobbyId) return;
+    try {
+      await navigator.clipboard.writeText(joinedLobbyId);
+      setStatus('Lobby code copied.');
+    } catch {
+      setStatus('Could not copy lobby code.');
+    }
+  };
+
   const showLobbyShell = !gameState;
 
   return (
@@ -314,13 +444,28 @@ export default function App() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-black/60">Qwirkle Multiplayer</p>
-            <h1 className="text-2xl font-semibold text-ink">Server-Authoritative Lobby</h1>
+            <h1 className="text-2xl font-semibold text-ink">Qwirkle Multiplayer</h1>
           </div>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
             <span className={`rounded-full px-3 py-1 ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
-            {joinedLobbyId ? <span className="rounded-full bg-black/5 px-3 py-1">Lobby {joinedLobbyId}</span> : null}
+            {joinedLobbyId ? (
+              <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-black/[0.03] px-2 py-1">
+                <span className="text-black/60">Lobby</span>
+                <input
+                  readOnly
+                  value={joinedLobbyId}
+                  className="w-28 rounded bg-white px-2 py-1 font-mono text-xs font-semibold tracking-[0.08em] text-black/80 outline-none"
+                />
+                <button
+                  onClick={copyLobbyCode}
+                  className="rounded border border-black/15 bg-white px-2 py-1 text-[11px] font-semibold text-black/70 hover:bg-black/5"
+                >
+                  Copy
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </header>
@@ -374,11 +519,25 @@ export default function App() {
                   </button>
                   <button
                     onClick={handleLeaveLobby}
-                    className="rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black/75 transition hover:bg-black/5"
+                    className="rounded-lg border border-red-600/70 bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
                   >
                     Leave
                   </button>
                 </div>
+              </div>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Lobby Code</span>
+                <input
+                  readOnly
+                  value={lobby.id}
+                  className="w-44 rounded-lg border border-black/10 bg-white px-3 py-2 font-mono text-sm tracking-[0.08em] text-black/80 outline-none"
+                />
+                <button
+                  onClick={copyLobbyCode}
+                  className="rounded-lg border border-black/15 bg-white px-3 py-2 text-xs font-semibold text-black/70 hover:bg-black/5"
+                >
+                  Copy Code
+                </button>
               </div>
               <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {lobby.players.map((player) => (
@@ -393,62 +552,62 @@ export default function App() {
           ) : null}
         </main>
       ) : (
-        <main className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+        <main className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
           <section className="space-y-3">
-            <GameHeader state={gameState} />
+            <div ref={scoreboardRef}>
+              <GameHeader state={gameState} error={error} />
+            </div>
 
             <BoardViewport
               boardTiles={boardTiles}
               draftTiles={draftTiles}
               validTargets={validTargets}
               onDropTile={onDropTile}
+              onRemoveDraftTile={onRemoveDraftTile}
               scale={scale}
               offset={offset}
               onPointerDownPan={onPointerDownPan}
               onWheelZoom={onWheelZoom}
             />
 
-            <div className="rounded-2xl border border-black/10 bg-white/85 p-3 shadow-sm backdrop-blur-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <button onClick={onCommit} className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white">
-                  Submit Move
-                </button>
-                <button onClick={onUndo} className="rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black/75">
-                  Undo Draft
-                </button>
-                <button onClick={onPass} className="rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black/75">
-                  Pass
-                </button>
-                <button onClick={onExchange} className="rounded-lg border border-orange-500/70 bg-orange-500 px-3 py-2 text-sm font-semibold text-white">
-                  Exchange Selected
-                </button>
-                <button onClick={handleLeaveLobby} className="ml-auto rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black/75">
-                  Leave Lobby
-                </button>
-              </div>
-
-              <p className="mt-3 text-sm text-black/70">{status || 'All game state is synchronized from server.'}</p>
-              {error ? (
-                <p className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-              ) : null}
-            </div>
-
-            <TileRack
-              tiles={selfPlayer?.rack ?? []}
-              selectedForExchange={selectedForExchange}
-              onToggleExchange={onToggleExchange}
-            />
+            <p className="rounded-2xl border border-black/10 bg-white/85 px-3 py-2 text-sm text-black/70 shadow-sm backdrop-blur-sm">
+              {status || 'All game state is synchronized from server.'}
+            </p>
           </section>
 
           <aside className="space-y-4">
-            <Scoreboard state={gameState} />
+            <div
+              className="flex h-fit flex-col rounded-2xl border border-black/10 bg-white/85 p-3 shadow-sm backdrop-blur-sm"
+              style={scoreboardHeight ? { minHeight: `${scoreboardHeight}px` } : undefined}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={onCommit} className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white">
+                  End Turn
+                </button>
+                <button onClick={onExchange} className="rounded-lg border border-orange-500/70 bg-orange-500 px-3 py-2 text-sm font-semibold text-white">
+                  Exchange Selected Tiles
+                </button>
+                <button onClick={onUndo} className="rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black/75">
+                  Undo
+                </button>
+                <button onClick={onPass} className="rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black/75">
+                  Pass Turn
+                </button>
+                <button onClick={handleLeaveLobby} className="col-span-2 rounded-lg border border-red-600/70 bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500">
+                  Leave Lobby
+                </button>
+              </div>
+            </div>
+
+            <TileRack
+              tiles={visibleRackTiles}
+              selectedForExchange={selectedForExchange}
+              onToggleExchange={onToggleExchange}
+            />
+
             <div className="rounded-2xl border border-black/10 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-black/70">Live Status</h3>
-              <ul className="space-y-1 text-sm text-black/70">
-                <li>Current turn: {currentPlayer?.name ?? 'Unknown'}</li>
-                <li>Remaining tiles: {gameState?.bagCount ?? 0}</li>
-                <li>Server legal targets: {gameState?.validTargets.length ?? 0}</li>
-              </ul>
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-black/70">Last Turn Points</h3>
+              <p className="text-sm text-black/75">{lastTurnPoints}</p>
             </div>
           </aside>
         </main>

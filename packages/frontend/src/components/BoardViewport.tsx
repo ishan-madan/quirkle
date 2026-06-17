@@ -1,26 +1,19 @@
 import type { Coordinate, TileInstance } from '@engine/types';
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
 import { parseCoord, toKey } from '../lib/coords';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { TileFace } from './TileFace';
 
 type Props = {
   boardTiles: Map<Coordinate, TileInstance>;
   draftTiles: Map<Coordinate, TileInstance>;
   validTargets: Set<Coordinate>;
   onDropTile: (coord: Coordinate, tileId: number) => void;
+  onRemoveDraftTile: (tileId: number) => void;
   scale: number;
   offset: { x: number; y: number };
   onPointerDownPan: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onWheelZoom: (event: ReactWheelEvent<HTMLDivElement>) => void;
-};
-
-const colorMap: Record<string, string> = {
-  red: 'bg-red-500',
-  orange: 'bg-orange-500',
-  yellow: 'bg-yellow-400',
-  green: 'bg-green-500',
-  blue: 'bg-blue-500',
-  purple: 'bg-purple-500',
 };
 
 export function BoardViewport({
@@ -28,11 +21,13 @@ export function BoardViewport({
   draftTiles,
   validTargets,
   onDropTile,
+  onRemoveDraftTile,
   scale,
   offset,
   onPointerDownPan,
   onWheelZoom,
 }: Props) {
+  const [dragOverCoord, setDragOverCoord] = useState<Coordinate | null>(null);
   const { minX, maxX, minY, maxY } = useMemo(() => {
     const all = [...boardTiles.keys(), ...draftTiles.keys()];
     if (all.length === 0) {
@@ -90,26 +85,53 @@ export function BoardViewport({
                   onDragOver={(event) => {
                     event.preventDefault();
                     event.dataTransfer.dropEffect = 'move';
+                    setDragOverCoord(coord);
+                  }}
+                  onDragEnter={() => {
+                    setDragOverCoord(coord);
+                  }}
+                  onDragLeave={(event) => {
+                    if (event.target === event.currentTarget) {
+                      setDragOverCoord(null);
+                    }
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
+                    setDragOverCoord(null);
                     const tileId = Number(event.dataTransfer.getData('text/tile-id'));
                     if (!Number.isNaN(tileId)) {
                       onDropTile(coord, tileId);
                     }
                   }}
                   className={`h-11 w-11 rounded-md border transition ${
-                    tile
-                      ? 'border-black/20 bg-white shadow-sm'
-                      : isValidTarget
-                        ? 'border-accent/40 bg-accent/10'
-                        : 'border-black/10 bg-black/[0.03]'
+                    dragOverCoord === coord
+                      ? 'border-black/80 bg-accent/10 ring-2 ring-accent'
+                      : tile
+                        ? 'border-black/20 bg-white shadow-sm'
+                        : isValidTarget
+                          ? 'border-accent/40 bg-accent/10'
+                          : 'border-black/10 bg-black/[0.03]'
                   }`}
                 >
                   {tile ? (
-                    <div className={`h-full w-full rounded-md p-1 ${isDraft ? 'ring-2 ring-accent/60' : ''}`}>
-                      <div className={`mx-auto h-2.5 w-2.5 rounded-full ${colorMap[tile.type.color] ?? 'bg-gray-400'}`} />
-                      <div className="mt-1 text-center text-[9px] font-bold capitalize text-black/80">{tile.type.shape}</div>
+                    <div
+                      draggable={isDraft}
+                      onClick={() => {
+                        if (draft) {
+                          onRemoveDraftTile(draft.id);
+                        }
+                      }}
+                      onDragStart={(event) => {
+                        if (!draft) {
+                          return;
+                        }
+                        event.dataTransfer.setData('text/tile-id', String(draft.id));
+                        event.dataTransfer.effectAllowed = 'move';
+                      }}
+                      className={`h-full w-full rounded-md p-1 ${isDraft ? 'cursor-grab ring-2 ring-accent/60' : ''}`}
+                      title={isDraft ? 'Drag to move this tile or click to return it to your rack' : undefined}
+                    >
+                      <TileFace tile={tile} />
                     </div>
                   ) : null}
                 </div>
