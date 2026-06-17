@@ -7,11 +7,15 @@ export const createLobbySchema = z.object({
 });
 
 export const lobbyIdSchema = z.object({
-  lobbyId: z.string().min(4).max(64),
+  lobbyId: z.string().trim().length(6).regex(/^[A-Za-z]{6}$/),
+});
+
+export const joinLobbySchema = lobbyIdSchema.extend({
+  rejoinToken: z.string().uuid().optional(),
 });
 
 export const submitMoveSchema = z.object({
-  lobbyId: z.string().min(4).max(64),
+  lobbyId: z.string().trim().length(6).regex(/^[A-Za-z]{6}$/),
   kind: z.union([z.literal('place'), z.literal('pass')]),
   placements: z
     .array(
@@ -24,6 +28,6 @@ export const submitMoveSchema = z.object({
 });
 
 export const drawTilesSchema = z.object({
-  lobbyId: z.string().min(4).max(64),
+  lobbyId: z.string().trim().length(6).regex(/^[A-Za-z]{6}$/),
   tileIds: z.array(z.number().int().min(1)).min(1).max(6),
 });

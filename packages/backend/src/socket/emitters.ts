@@ -1,5 +1,5 @@
 import type { Lobby, LobbyId } from '../types/domain.js';
-import type { ServerStateView, ServerToClientEvents } from '../types/socket.js';
+import type { ClientLobby, ServerStateView, ServerToClientEvents } from '../types/socket.js';
 import type { Server, Socket } from 'socket.io';
 import { Board, MoveValidator, type Coordinate, type GameState } from '@qwirkle/engine';
 
@@ -94,7 +94,23 @@ function computeValidTargets(raw: GameState, userPlayerNumber?: number): Coordin
 }
 
 export function emitLobby(io: Server<any, ServerToClientEvents>, lobby: Lobby): void {
-  io.to(lobby.id).emit('lobbyUpdated', lobby);
+  io.to(lobby.id).emit('lobbyUpdated', toClientLobby(lobby));
+}
+
+function toClientLobby(lobby: Lobby): ClientLobby {
+  return {
+    id: lobby.id,
+    hostUserId: lobby.hostUserId,
+    createdAt: lobby.createdAt,
+    gameStarted: lobby.gameStarted,
+    players: lobby.players.map((player) => ({
+      userId: player.userId,
+      socketId: player.socketId,
+      name: player.name,
+      joinedAt: player.joinedAt,
+      connected: player.connected,
+    })),
+  };
 }
 
 export function emitStateToLobby(

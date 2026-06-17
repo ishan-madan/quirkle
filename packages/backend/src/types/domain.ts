@@ -9,6 +9,7 @@ export interface LobbyPlayer {
   name: string;
   joinedAt: number;
   connected: boolean;
+  rejoinToken: string;
 }
 
 export interface Lobby {

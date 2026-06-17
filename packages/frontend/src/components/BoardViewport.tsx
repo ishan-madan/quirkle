@@ -14,6 +14,7 @@ type Props = {
   offset: { x: number; y: number };
   onPointerDownPan: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onWheelZoom: (event: ReactWheelEvent<HTMLDivElement>) => void;
+  className?: string;
 };
 
 export function BoardViewport({
@@ -26,6 +27,7 @@ export function BoardViewport({
   offset,
   onPointerDownPan,
   onWheelZoom,
+  className,
 }: Props) {
   const [dragOverCoord, setDragOverCoord] = useState<Coordinate | null>(null);
   const { minX, maxX, minY, maxY } = useMemo(() => {
@@ -53,7 +55,7 @@ export function BoardViewport({
 
   return (
     <div
-      className="relative h-[52vh] min-h-[360px] w-full overflow-hidden rounded-2xl border border-black/10 bg-white/60 shadow-sm"
+      className={`relative min-h-[360px] w-full overflow-hidden rounded-2xl border border-black/10 bg-white/60 shadow-sm ${className ?? 'h-[52vh]'}`}
       onPointerDown={onPointerDownPan}
       onWheel={onWheelZoom}
     >

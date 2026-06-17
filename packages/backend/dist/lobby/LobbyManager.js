@@ -1,4 +1,4 @@
-import { makeLobbyId } from '../utils/id.js';
+import { makeLobbyId, makeRejoinToken } from '../utils/id.js';
 export class LobbyManager {
     lobbies = new Map();
     createLobby(host) {
@@ -18,7 +18,7 @@ export class LobbyManager {
     listLobbies() {
         return Array.from(this.lobbies.values());
     }
-    joinLobby(lobbyId, player) {
+    joinLobby(lobbyId, player, rejoinToken) {
         const lobby = this.lobbies.get(lobbyId);
         if (!lobby)
             throw new Error('Lobby not found');
@@ -27,14 +27,32 @@ export class LobbyManager {
             existing.socketId = player.socketId;
             existing.name = player.name;
             existing.connected = true;
-            return lobby;
+            return { lobby, rejoinToken: existing.rejoinToken };
+        }
+        const reclaimable = rejoinToken
+            ? lobby.players.find((existingPlayer) => !existingPlayer.connected && existingPlayer.rejoinToken === rejoinToken)
+            : undefined;
+        if (reclaimable) {
+            const previousUserId = reclaimable.userId;
+            reclaimable.userId = player.userId;
+            reclaimable.socketId = player.socketId;
+            reclaimable.name = player.name;
+            reclaimable.connected = true;
+            if (lobby.hostUserId === previousUserId) {
+                lobby.hostUserId = player.userId;
+            }
+            return { lobby, rejoinToken: reclaimable.rejoinToken, reclaimedUserId: previousUserId };
         }
         if (lobby.gameStarted)
             throw new Error('Game already started');
         if (lobby.players.length >= 4)
             throw new Error('Lobby is full');
-        lobby.players.push(player);
-        return lobby;
+        const nextPlayer = {
+            ...player,
+            rejoinToken: rejoinToken ?? makeRejoinToken(),
+        };
+        lobby.players.push(nextPlayer);
+        return { lobby, rejoinToken: nextPlayer.rejoinToken };
     }
     markDisconnected(userId) {
         const touched = [];
@@ -61,6 +79,17 @@ export class LobbyManager {
             lobby.hostUserId = lobby.players[0].userId;
         }
         return { deleted: false, lobby };
+    }
+    disconnectPlayer(lobbyId, userId) {
+        const lobby = this.lobbies.get(lobbyId);
+        if (!lobby)
+            return undefined;
+        const player = lobby.players.find((entry) => entry.userId === userId);
+        if (!player)
+            return lobby;
+        player.connected = false;
+        player.socketId = '';
+        return lobby;
     }
     setGameStarted(lobbyId, gameStarted) {
         const lobby = this.lobbies.get(lobbyId);

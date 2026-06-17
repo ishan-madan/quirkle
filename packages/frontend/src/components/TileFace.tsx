@@ -17,7 +17,7 @@ const colorClassMap: Record<string, string> = {
   purple: 'text-purple-500',
 };
 
-export function TileFace({ tile, iconClassName = 'h-6 w-6' }: Props) {
+export function TileFace({ tile, iconClassName = 'h-8 w-8' }: Props) {
   return (
     <div className="flex h-full items-center justify-center">
       <ShapeGlyph

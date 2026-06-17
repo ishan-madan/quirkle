@@ -1,5 +1,5 @@
 import type { Lobby, LobbyId, LobbyPlayer, UserId } from '../types/domain.js';
-import { makeLobbyId } from '../utils/id.js';
+import { makeLobbyId, makeRejoinToken } from '../utils/id.js';
 
 export class LobbyManager {
   private readonly lobbies = new Map<LobbyId, Lobby>();
@@ -24,7 +24,11 @@ export class LobbyManager {
     return Array.from(this.lobbies.values());
   }
 
-  joinLobby(lobbyId: LobbyId, player: LobbyPlayer): Lobby {
+  joinLobby(
+    lobbyId: LobbyId,
+    player: Omit<LobbyPlayer, 'rejoinToken'>,
+    rejoinToken?: string
+  ): { lobby: Lobby; rejoinToken: string; reclaimedUserId?: UserId } {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby) throw new Error('Lobby not found');
 
@@ -33,14 +37,38 @@ export class LobbyManager {
       existing.socketId = player.socketId;
       existing.name = player.name;
       existing.connected = true;
-      return lobby;
+      return { lobby, rejoinToken: existing.rejoinToken };
+    }
+
+    const reclaimable = rejoinToken
+      ? lobby.players.find(
+          (existingPlayer) => !existingPlayer.connected && existingPlayer.rejoinToken === rejoinToken
+        )
+      : undefined;
+    if (reclaimable) {
+      const previousUserId = reclaimable.userId;
+      reclaimable.userId = player.userId;
+      reclaimable.socketId = player.socketId;
+      reclaimable.name = player.name;
+      reclaimable.connected = true;
+
+      if (lobby.hostUserId === previousUserId) {
+        lobby.hostUserId = player.userId;
+      }
+
+      return { lobby, rejoinToken: reclaimable.rejoinToken, reclaimedUserId: previousUserId };
     }
 
     if (lobby.gameStarted) throw new Error('Game already started');
     if (lobby.players.length >= 4) throw new Error('Lobby is full');
 
-    lobby.players.push(player);
-    return lobby;
+    const nextPlayer: LobbyPlayer = {
+      ...player,
+      rejoinToken: rejoinToken ?? makeRejoinToken(),
+    };
+
+    lobby.players.push(nextPlayer);
+    return { lobby, rejoinToken: nextPlayer.rejoinToken };
   }
 
   markDisconnected(userId: UserId): Lobby[] {
@@ -71,6 +99,18 @@ export class LobbyManager {
     }
 
     return { deleted: false, lobby };
+  }
+
+  disconnectPlayer(lobbyId: LobbyId, userId: UserId): Lobby | undefined {
+    const lobby = this.lobbies.get(lobbyId);
+    if (!lobby) return undefined;
+
+    const player = lobby.players.find((entry) => entry.userId === userId);
+    if (!player) return lobby;
+
+    player.connected = false;
+    player.socketId = '';
+    return lobby;
   }
 
   setGameStarted(lobbyId: LobbyId, gameStarted: boolean): void {

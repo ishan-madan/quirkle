@@ -35,7 +35,7 @@ export function TileRack({ tiles, selectedForExchange, onToggleExchange }: Props
                 }`}
                 title={`${tile.type.color} ${tile.type.shape}`}
               >
-                <TileFace tile={tile} iconClassName="h-9 w-9" />
+                <TileFace tile={tile} iconClassName="h-11 w-11" />
               </button>
 
               <button
