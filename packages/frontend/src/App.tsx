@@ -596,7 +596,7 @@ export default function App() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-black/60">Qwirkle Multiplayer</p>
-            <h1 className="text-2xl font-semibold text-ink">Qwirkle Multiplayer</h1>
+            <h1 className="text-2xl font-semibold text-ink">Online Lobby</h1>
           </div>
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <span className={`rounded-full px-3 py-1 ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -698,6 +698,7 @@ export default function App() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-black/70">Waiting Room</h2>
                 <div className="flex gap-2">
                   <button
+                    disabled={userIdRef.current !== lobby.hostUserId}
                     onClick={handleStartGame}
                     className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110"
                   >
