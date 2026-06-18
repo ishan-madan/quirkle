@@ -1,8 +1,8 @@
 /**
- * Qwirkle Game Engine
+ * Quirkle Game Engine
  *
  * Main export file. Contains the complete, deterministic, UI-agnostic
- * game engine for Qwirkle, following the specification in README.md.
+ * game engine for Quirkle, following the specification in README.md.
  */
 export * from './types.js';
 export { TileSet } from './tile/TileSet.js';

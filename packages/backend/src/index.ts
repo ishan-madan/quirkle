@@ -24,7 +24,7 @@ const persistence =
 registerPersistenceRoutes(app, persistence);
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'qwirkle-backend' });
+  res.json({ ok: true, service: 'quirkle-backend' });
 });
 
 const httpServer = http.createServer(app);

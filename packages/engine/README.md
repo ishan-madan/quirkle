@@ -1,6 +1,6 @@
-# @qwirkle/engine
+# @quirkle/engine
 
-Pure TypeScript Qwirkle rules engine shared by frontend and backend.
+Pure TypeScript Quirkle rules engine shared by frontend and backend.
 
 ## Scope
 
@@ -19,7 +19,7 @@ Pure TypeScript Qwirkle rules engine shared by frontend and backend.
   - LineValidator: line rule checks.
   - MoveValidator: full placement validation ordering.
 - scoring/
-  - Scorer: line scoring and Qwirkle bonuses.
+  - Scorer: line scoring and Quirkle bonuses.
 - turn/
   - TurnDraft: temporary placement state and undo.
 - game/
@@ -32,7 +32,7 @@ This package is consumed via workspace linking in this monorepo.
 ## Usage
 
 ```typescript
-import { GameEngine } from '@qwirkle/engine';
+import { GameEngine } from '@quirkle/engine';
 
 const engine = new GameEngine({
   gameId: 'game-001',
@@ -60,7 +60,7 @@ if (!result.success) {
 - Placement legality (alignment, adjacency, contiguity, line validity, max line length).
 - Tile exchange constraints based on available bag count.
 - Pass action on player turn.
-- Scoring for primary and perpendicular lines with Qwirkle bonus handling.
+- Scoring for primary and perpendicular lines with Quirkle bonus handling.
 - Endgame by rack depletion or bag-empty stalemate pass cycle.
 
 ## Exposed State

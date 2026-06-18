@@ -1,5 +1,5 @@
 /**
- * Core types for the Qwirkle game engine.
+ * Core types for the Quirkle game engine.
  * These types are fundamental to all game logic and are exported for use by frontend and backend.
  */
 
@@ -82,7 +82,7 @@ export interface GamePlayer {
 export interface ScoreLineResult {
   readonly line: TileInstance[];
   readonly points: number;
-  readonly isQwirkle: boolean;
+  readonly isQuirkle: boolean;
 }
 
 export interface MoveScoreResult {

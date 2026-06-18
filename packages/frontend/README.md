@@ -1,6 +1,6 @@
-# Qwirkle Frontend
+# Quirkle Frontend
 
-React + TypeScript + Tailwind client for real-time multiplayer Qwirkle.
+React + TypeScript + Tailwind client for real-time multiplayer Quirkle.
 
 ## What This App Does
 
@@ -52,7 +52,7 @@ Client listens for:
 
 ## Engine Integration
 
-- Uses @qwirkle/engine move validation in the client for draft-time UX feedback.
+- Uses @quirkle/engine move validation in the client for draft-time UX feedback.
 - Server remains authoritative; client-side checks are advisory and do not commit state.
 
 ## Environment

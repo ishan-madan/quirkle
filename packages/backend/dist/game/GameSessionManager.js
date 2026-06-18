@@ -1,4 +1,4 @@
-import { GameEngine } from '@qwirkle/engine';
+import { GameEngine } from '@quirkle/engine';
 export class GameSessionManager {
     sessions = new Map();
     createSession(lobby) {

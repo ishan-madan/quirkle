@@ -1,6 +1,6 @@
-# Qwirkle Multiplayer Web Clone – Architecture Design
+# Quirkle Multiplayer Web Clone – Architecture Design
 
-This document specifies the complete architecture for a multiplayer web-based Qwirkle implementation.
+This document specifies the complete architecture for a multiplayer web-based Quirkle implementation.
 
 **Tech Stack:**
 - Frontend: React + TypeScript + Tailwind CSS

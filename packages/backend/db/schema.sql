@@ -1,4 +1,4 @@
--- Qwirkle backend schema for Supabase Postgres
+-- Quirkle backend schema for Supabase Postgres
 -- Designed for multiplayer persistence, analytics, and future ranked matchmaking.
 
 create extension if not exists pgcrypto;

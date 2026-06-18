@@ -1,4 +1,4 @@
-import { GameEngine } from '@qwirkle/engine';
+import { GameEngine } from '@quirkle/engine';
 import type { GameSession, Lobby, LobbyId, UserId } from '../types/domain.js';
 
 export class GameSessionManager {

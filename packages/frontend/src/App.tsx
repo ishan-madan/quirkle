@@ -8,13 +8,13 @@ import { connectGameSocket, type GameSocket } from './network/socket';
 import type { Lobby, ServerStateView } from './types/multiplayer';
 
 const STORAGE = {
-  userId: 'qwirkle:userId',
-  name: 'qwirkle:name',
-  lobbyId: 'qwirkle:lobbyId',
+  userId: 'quirkle:userId',
+  name: 'quirkle:name',
+  lobbyId: 'quirkle:lobbyId',
 };
 
 function rejoinTokenStorageKey(lobbyId: string): string {
-  return `qwirkle:rejoinToken:${lobbyId.toUpperCase()}`;
+  return `quirkle:rejoinToken:${lobbyId.toUpperCase()}`;
 }
 
 function getStoredRejoinToken(lobbyId: string): string | null {
@@ -595,7 +595,7 @@ export default function App() {
       <header className="rounded-2xl border border-black/10 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-black/60">Qwirkle Multiplayer</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-black/60">Quirkle Multiplayer</p>
             <h1 className="text-2xl font-semibold text-ink">Online Lobby</h1>
           </div>
           <div className="flex items-center gap-2 text-xs sm:text-sm">

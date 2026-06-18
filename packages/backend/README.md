@@ -1,4 +1,4 @@
-# Qwirkle Multiplayer Backend
+# Quirkle Multiplayer Backend
 
 Server-authoritative multiplayer backend built with Node.js, Express, Socket.IO, and PostgreSQL.
 
@@ -6,7 +6,7 @@ Server-authoritative multiplayer backend built with Node.js, Express, Socket.IO,
 
 - Lobby lifecycle (create, join, leave, host start).
 - Authoritative in-memory game sessions per lobby.
-- Move submission and validation via @qwirkle/engine.
+- Move submission and validation via @quirkle/engine.
 - Hidden-information transport (players only receive their own rack).
 - Reconnection support with per-player rejoin tokens.
 - Optional persistence for users, games, history, and leaderboard stats.

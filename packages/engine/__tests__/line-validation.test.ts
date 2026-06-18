@@ -82,7 +82,7 @@ describe('LineValidator', () => {
     expect(result.reason).toContain('mixed');
   });
 
-  it('should accept Qwirkle (all 6 shapes same color)', () => {
+  it('should accept Quirkle (all 6 shapes same color)', () => {
     // Red tiles with all 6 different shapes
     const tiles = [
       getTile(Color.Red, Shape.Circle),
