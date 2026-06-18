@@ -1,5 +1,5 @@
 /**
- * GameEngine: Main orchestrator for the Qwirkle game.
+ * GameEngine: Main orchestrator for the Quirkle game.
  *
  * This is the authoritative game logic engine.
  * It coordinates:

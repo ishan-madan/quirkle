@@ -1,6 +1,6 @@
 import type { Server, Socket } from 'socket.io';
-import type { GameState } from '@qwirkle/engine';
-import type { Coordinate } from '@qwirkle/engine';
+import type { GameState } from '@quirkle/engine';
+import type { Coordinate } from '@quirkle/engine';
 import type {
   ClientToServerEvents,
   DrawTilesPayload,

@@ -1,4 +1,4 @@
-import type { GameEngine } from '@qwirkle/engine';
+import type { GameEngine } from '@quirkle/engine';
 
 export type LobbyId = string;
 export type UserId = string;

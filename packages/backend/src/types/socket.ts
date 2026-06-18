@@ -1,4 +1,4 @@
-import type { Coordinate, GameState } from '@qwirkle/engine';
+import type { Coordinate, GameState } from '@quirkle/engine';
 import type { LobbyId, UserId } from './domain.js';
 
 export interface SocketUser {

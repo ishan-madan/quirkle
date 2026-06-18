@@ -3,14 +3,14 @@
  *
  * Scoring rules:
  * - Each line scores its length (1-6 points)
- * - A 6-tile line (Qwirkle) earns +6 bonus points (total 12)
+ * - A 6-tile line (Quirkle) earns +6 bonus points (total 12)
  * - Primary and perpendicular lines both score
  * - Lines are deduplicated (same line not scored twice)
  */
 import CoordinateUtil from '../board/Coordinate.js';
 import LineValidator from '../board/LineValidator.js';
 export class Scorer {
-    static QWIRKLE_BONUS = 6;
+    static QUIRKLE_BONUS = 6;
     static MAX_LINE_LENGTH = 6;
     /**
      * Score a move given the placements and current board state.
@@ -116,13 +116,13 @@ export class Scorer {
             return null;
         }
         const baseScore = tiles.length;
-        const isQwirkle = tiles.length === this.MAX_LINE_LENGTH;
-        const bonus = isQwirkle ? this.QWIRKLE_BONUS : 0;
+        const isQuirkle = tiles.length === this.MAX_LINE_LENGTH;
+        const bonus = isQuirkle ? this.QUIRKLE_BONUS : 0;
         const points = baseScore + bonus;
         return {
             line: tiles,
             points,
-            isQwirkle,
+            isQuirkle,
         };
     }
     /**

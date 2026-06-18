@@ -1,7 +1,7 @@
 {
-  "name": "@qwirkle/engine",
+  "name": "@quirkle/engine",
   "version": "1.0.0",
-  "description": "Pure TypeScript Qwirkle game engine - deterministic, UI-agnostic, fully testable",
+  "description": "Pure TypeScript Quirkle game engine - deterministic, UI-agnostic, fully testable",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,7 +22,7 @@
     }
   },
   "keywords": [
-    "qwirkle",
+    "quirkle",
     "board-game",
     "game-engine",
     "typescript",

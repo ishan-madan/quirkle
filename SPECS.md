@@ -1,12 +1,12 @@
-# Qwirkle Engineering Specification
+# Quirkle Engineering Specification
 
-This README is the canonical software specification for a multiplayer web-based Qwirkle engine.
+This README is the canonical software specification for a multiplayer web-based Quirkle engine.
 
 If a printed rulebook, fan site, or third-party implementation differs from this document, this document wins for software behavior.
 
 ## 0. Canonical Design Decisions
 
-These decisions resolve common ambiguities in published Qwirkle descriptions:
+These decisions resolve common ambiguities in published Quirkle descriptions:
 
 - The game supports exactly 2 to 4 active players.
 - The board is an unbounded integer grid with no physical edge.
@@ -15,7 +15,7 @@ These decisions resolve common ambiguities in published Qwirkle descriptions:
 - A player may pass on any turn.
 - A player may exchange tiles only if the bag contains at least as many tiles as the player wants to exchange.
 - A move may create multiple valid lines, and every formed line scores independently.
-- A line of 6 tiles earns the Qwirkle bonus once per line.
+- A line of 6 tiles earns the Quirkle bonus once per line.
 - A tie at game end is allowed unless a higher-level product requirement adds an external tiebreak.
 - A game may end by rack depletion or by stalemate after the bag is empty and no legal move remains for any player.
 
@@ -373,7 +373,7 @@ Rationale:
 - Eliminates arbitrary board size limits.
 - Simplifies coordinate management and iteration.
 - Improves memory efficiency by avoiding storage of empty cells.
-- Aligns naturally with Qwirkle's expanding board topology.
+- Aligns naturally with Quirkle's expanding board topology.
 - Reduces computational overhead for algorithms operating on frontier coordinates.
 
 ### 4.6 Coordinate Serialization
@@ -778,7 +778,7 @@ Inputs:
 
 Outputs:
 
-- `MoveScore { total, lineScores, qwirkleBonuses }`.
+- `MoveScore { total, lineScores, quirkleBonuses }`.
 
 Pseudocode:
 
@@ -795,10 +795,10 @@ function scoreMove(move, board):
 		if not validateResult.valid:
 			return invalid("primary line invalid")
 		score = primaryLine.length
-		qwirkleBonus = 6 if primaryLine.length == 6 else 0
+		quirkleBonus = 6 if primaryLine.length == 6 else 0
 		scoredLineKeys.add(primaryLine.key)
-		lineScores.append({ key: primaryLine.key, length: primaryLine.length, score: score + qwirkleBonus })
-		total += score + qwirkleBonus
+		lineScores.append({ key: primaryLine.key, length: primaryLine.length, score: score + quirkleBonus })
+		total += score + quirkleBonus
 
 	for each placedTile in move.placements:
 		for each axis in perpendicularAxes(primaryLine.axis):
@@ -813,12 +813,12 @@ function scoreMove(move, board):
 			if not validateResult.valid:
 				return invalid("perpendicular line invalid")
 			score = candidateLine.length
-			qwirkleBonus = 6 if candidateLine.length == 6 else 0
+			quirkleBonus = 6 if candidateLine.length == 6 else 0
 			scoredLineKeys.add(candidateLine.key)
-			lineScores.append({ key: candidateLine.key, length: candidateLine.length, score: score + qwirkleBonus })
-			total += score + qwirkleBonus
+			lineScores.append({ key: candidateLine.key, length: candidateLine.length, score: score + quirkleBonus })
+			total += score + quirkleBonus
 
-	return valid({ total, lineScores, qwirkleBonuses: sum bonuses in lineScores })
+	return valid({ total, lineScores, quirkleBonuses: sum bonuses in lineScores })
 ```
 
 Algorithm notes:
@@ -828,7 +828,7 @@ Algorithm notes:
 - `buildMaximalLineThrough` returns the full contiguous row or column through the placed tile after applying the draft.
 - `scoredLineKeys` prevents duplicate scoring when more than one newly placed tile touches the same canonical line.
 - A move is invalid if any line it creates fails validation.
-- Qwirkle bonus is applied per six-tile line and is included in that line's score.
+- Quirkle bonus is applied per six-tile line and is included in that line's score.
 
 ### 7.3.1 Primary Line Tie-Break Clarification
 
@@ -888,7 +888,7 @@ Edge cases:
 
 - The same newly placed tile can be counted in several lines.
 
-### 7.7 Qwirkle Bonus Scoring
+### 7.7 Quirkle Bonus Scoring
 
 Inputs:
 
@@ -926,7 +926,7 @@ y=0 R-C R-S R-D R-T
 Score: 4
 ```
 
-Example B: Complete a Qwirkle.
+Example B: Complete a Quirkle.
 
 ```text
 Before move
@@ -1206,7 +1206,7 @@ Validation criteria:
 
 Inputs:
 
-- Qwirkle bonuses already earned during normal turns.
+- Quirkle bonuses already earned during normal turns.
 
 Outputs:
 
@@ -1214,7 +1214,7 @@ Outputs:
 
 Validation criteria:
 
-- Qwirkle bonuses are not re-awarded at game end.
+- Quirkle bonuses are not re-awarded at game end.
 
 ### 10.4 Tie Handling
 
@@ -1572,7 +1572,7 @@ Notation for the examples below:
 7. Existing board has `B-X`; A places `G-X` and `P-X` vertically to extend to 3.
 8. Existing board has `O-L`, `O-X`; A places `O-T` at the end to form a 3-tile same-color line.
 9. Existing board has `Y-S`, `B-S`, `P-S`; A places `G-S` to extend same-shape line.
-10. Existing board has a 5-tile line `R-C`, `R-S`, `R-D`, `R-T`, `R-L`; A places `R-X` to complete a Qwirkle.
+10. Existing board has a 5-tile line `R-C`, `R-S`, `R-D`, `R-T`, `R-L`; A places `R-X` to complete a Quirkle.
 11. Existing board has `G-C` at `(0,0)` and `G-S` at `(1,0)`; A places `G-D` at `(2,0)`.
 12. Existing board has `B-D`, `G-D`, `P-D`; A places `O-D` on the same row.
 13. Existing board has `R-X` at `(0,0)` and `B-X` at `(0,1)`; A places `G-X` at `(0,2)`.
@@ -1598,8 +1598,8 @@ Notation for the examples below:
 33. A places one tile that connects two existing tiles into a valid same-color line of 3.
 34. A places one tile that completes a vertical same-shape line and a horizontal same-color line simultaneously.
 35. A places tiles on negative coordinates that are otherwise valid.
-36. A completes a 6-tile line and earns the 6-point Qwirkle bonus.
-37. Existing board has `R-C` at `(-2,0)`, `R-S` at `(-1,0)`, `R-D` at `(1,0)`, `R-T` at `(2,0)`, `R-L` at `(3,0)`, `B-X` at `(0,-2)`, `G-X` at `(0,-1)`, `P-X` at `(0,1)`, `O-X` at `(0,2)`, and `Y-X` at `(0,3)`; A places `R-X` at `(0,0)` to complete two different 6-tile lines and earn two Qwirkle bonuses.
+36. A completes a 6-tile line and earns the 6-point Quirkle bonus.
+37. Existing board has `R-C` at `(-2,0)`, `R-S` at `(-1,0)`, `R-D` at `(1,0)`, `R-T` at `(2,0)`, `R-L` at `(3,0)`, `B-X` at `(0,-2)`, `G-X` at `(0,-1)`, `P-X` at `(0,1)`, `O-X` at `(0,2)`, and `Y-X` at `(0,3)`; A places `R-X` at `(0,0)` to complete two different 6-tile lines and earn two Quirkle bonuses.
 38. A places a tile adjacent only to one end of a long line, extending it by 1.
 39. A places a tile adjacent to an existing tile and also to a perpendicular existing line, creating a valid cross.
 40. A places a single tile on an otherwise empty board at `(100,-20)`.
@@ -1706,7 +1706,7 @@ The project should be implemented in the following order to establish a solid fo
 2. Board representation: Sparse coordinate map with tile storage and lookup.
 3. Line validation: The validateLine() algorithm and line rule enforcement.
 4. Move validation: The 16-step validation ordering for placement, exchange, and pass.
-5. Scoring engine: The scoreMove() algorithm with line scoring and Qwirkle bonuses.
+5. Scoring engine: The scoreMove() algorithm with line scoring and Quirkle bonuses.
 6. TurnDraft system: Draft placements, axis locking, undo, and commit mechanics.
 7. Game state management: State machine, turn order, player racks, bag management, endgame logic.
 8. Unit tests: Comprehensive test suite covering all 100 test cases from Section 15.
@@ -1750,7 +1750,7 @@ Implemented and verified in current codebase:
 - Server-authoritative gameplay is enforced by backend session ownership of GameEngine.
 - First player selection is server-side and randomized at game start.
 - Placement, exchange, pass, and scoring rules are enforced by engine validation and commit paths.
-- Qwirkle bonus handling is implemented in scoring.
+- Quirkle bonus handling is implemented in scoring.
 - Endgame supports rack depletion and bag-empty stalemate pass-cycle behavior.
 - Multiplayer hidden information is enforced by per-player filtered state emission.
 - Reconnection flow is implemented with lobby-scoped rejoin tokens.

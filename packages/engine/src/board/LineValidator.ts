@@ -1,5 +1,5 @@
 /**
- * LineValidator: Validates lines according to Qwirkle rules.
+ * LineValidator: Validates lines according to Quirkle rules.
  *
  * A valid line must:
  * - Have length 1-6

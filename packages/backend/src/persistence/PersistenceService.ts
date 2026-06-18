@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import type { GameState } from '@qwirkle/engine';
+import type { GameState } from '@quirkle/engine';
 import type { GameSession, Lobby } from '../types/domain.js';
 import { UserRepository } from '../db/repositories/UserRepository.js';
 import { GameRepository } from '../db/repositories/GameRepository.js';

@@ -1,5 +1,5 @@
 {
-  "name": "@qwirkle/backend",
+  "name": "@quirkle/backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
-    "@qwirkle/engine": "file:../engine",
+    "@quirkle/engine": "file:../engine",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "dotenv": "^16.4.5",

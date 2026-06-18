@@ -1,7 +1,7 @@
 import type { Lobby, LobbyId } from '../types/domain.js';
 import type { ClientLobby, ServerStateView, ServerToClientEvents } from '../types/socket.js';
 import type { Server, Socket } from 'socket.io';
-import { Board, MoveValidator, type Coordinate, type GameState } from '@qwirkle/engine';
+import { Board, MoveValidator, type Coordinate, type GameState } from '@quirkle/engine';
 
 export function toClientState(raw: GameState, userPlayerNumber?: number): ServerStateView {
   const players = Array.from(raw.players.values()).map((player) => {

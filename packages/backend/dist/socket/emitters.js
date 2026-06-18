@@ -1,4 +1,4 @@
-import { Board, MoveValidator } from '@qwirkle/engine';
+import { Board, MoveValidator } from '@quirkle/engine';
 export function toClientState(raw, userPlayerNumber) {
     const players = Array.from(raw.players.values()).map((player) => {
         const isSelf = userPlayerNumber !== undefined && userPlayerNumber === player.playerNumber;
